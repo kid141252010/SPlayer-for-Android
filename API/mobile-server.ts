@@ -12,7 +12,7 @@ type ApiFunction = (params: Record<string, unknown>) => Promise<{ body?: unknown
 
 const EMBEDDED_API_VENDOR_ROOT = path.join(__dirname, "vendor", "netease-api");
 const EMBEDDED_API_MAIN_ENTRY = path.join(EMBEDDED_API_VENDOR_ROOT, "main.js");
-const require = createRequire(import.meta.url);
+const require = createRequire(EMBEDDED_API_MAIN_ENTRY);
 
 const toPathCase = (value: string) => {
   return value

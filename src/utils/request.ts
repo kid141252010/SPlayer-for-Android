@@ -76,6 +76,13 @@ const notifyApiBaseUrlError = () => {
 const attachApiBaseUrl = async (
   request: InternalAxiosRequestConfig,
 ): Promise<InternalAxiosRequestConfig> => {
+  const explicitBaseUrl = String(request.baseURL || "");
+  const requestUrl = String(request.url || "");
+
+  if (ABSOLUTE_HTTP_URL_RE.test(explicitBaseUrl) || ABSOLUTE_HTTP_URL_RE.test(requestUrl)) {
+    return request;
+  }
+
   const baseURL = resolveApiBaseUrl();
 
   if (!baseURL) {
