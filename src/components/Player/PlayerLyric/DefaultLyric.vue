@@ -137,7 +137,7 @@ import { type LyricWord, type LyricLine } from "@applemusic-like-lyrics/lyric";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { getLyricLanguage } from "@/utils/format";
-import { isElectron } from "@/utils/env";
+import { isCapacitorAndroid, isElectron } from "@/utils/env";
 import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
 import { getFontSize } from "@/utils/style";
 
@@ -154,6 +154,12 @@ const settingStore = useSettingStore();
 const player = usePlayerController();
 
 const lyricScrollContainer = ref<HTMLElement | null>(null);
+
+const effectiveLyricsScrollOffset = computed(() =>
+  isCapacitorAndroid
+    ? Math.max(0, settingStore.lyricsScrollOffset - 0.08)
+    : settingStore.lyricsScrollOffset,
+);
 
 // 是否为逐字歌词模式
 const isYrcMode = computed(() => settingStore.showWordLyrics && musicStore.isHasYrc);
@@ -363,7 +369,7 @@ const lyricsScroll = (index: number) => {
   const elementTop = lrcItemDom.offsetTop;
   const elementHeight = lrcItemDom.offsetHeight;
   // 居中偏移滚动
-  let targetY = elementTop - (containerHeight - elementHeight) * settingStore.lyricsScrollOffset;
+  let targetY = elementTop - (containerHeight - elementHeight) * effectiveLyricsScrollOffset.value;
   // 确保不超出边界
   targetY = Math.max(0, Math.min(targetY, container.scrollHeight - container.clientHeight));
   // 执行平滑滚动

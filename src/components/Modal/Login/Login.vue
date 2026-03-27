@@ -1,7 +1,6 @@
 <template>
   <div class="login">
     <img src="/icons/favicon.png?asset" alt="logo" class="logo" />
-    <!-- 登录方式 -->
     <n-tabs class="login-tabs" default-value="login-qr" type="segment" animated>
       <n-tab-pane name="login-qr" tab="扫码登录">
         <LoginQRCode :pause="qrPause" @saveLogin="saveLogin" />
@@ -10,7 +9,6 @@
         <LoginPhone @saveLogin="saveLogin" />
       </n-tab-pane>
     </n-tabs>
-    <!-- 其他方式 -->
     <n-flex align="center" class="other">
       <n-button
         v-if="!disableUid"
@@ -27,7 +25,6 @@
         Cookie 登录
       </n-button>
     </n-flex>
-    <!-- 关闭登录 -->
     <n-button :focusable="false" class="close" strong secondary round @click="emit('close')">
       <template #icon>
         <SvgIcon name="WindowClose" />
@@ -38,6 +35,7 @@
 </template>
 
 <script setup lang="ts">
+import { userAccount, userDetail, userSubcount } from "@/api/user";
 import { setCookies } from "@/utils/cookie";
 import { updateSpecialUserData, updateUserData } from "@/utils/auth";
 import { useDataStore } from "@/stores";
@@ -46,9 +44,7 @@ import LoginUID from "./LoginUID.vue";
 import LoginCookie from "./LoginCookie.vue";
 
 const props = defineProps<{
-  /** 强制登录 */
   force?: boolean;
-  /** 禁用 UID 登录 */
   disableUid?: boolean;
 }>();
 
@@ -58,37 +54,72 @@ const emit = defineEmits<{
 }>();
 
 const dataStore = useDataStore();
-
-// 暂停二维码检查
 const qrPause = ref(false);
 
-// 保存登录信息
+const hydrateCoreUserData = async () => {
+  const accountResult = await userAccount();
+  const profile = accountResult?.profile;
+  const userId = profile?.userId;
+
+  if (!userId) {
+    throw new Error("Missing user profile after login");
+  }
+
+  const [detailResult, subcountResult] = await Promise.all([userDetail(userId), userSubcount()]);
+  const userData = Object.assign(profile, detailResult);
+
+  dataStore.userData = {
+    userId,
+    userType: userData.userType,
+    vipType: userData.vipType,
+    name: userData.nickname,
+    level: userData.level,
+    avatarUrl: userData.avatarUrl,
+    backgroundUrl: userData.backgroundUrl,
+    createTime: userData.createTime,
+    createDays: userData.createDays,
+    artistCount: subcountResult?.artistCount,
+    djRadioCount: subcountResult?.djRadioCount,
+    mvCount: subcountResult?.mvCount,
+    subPlaylistCount: subcountResult?.subPlaylistCount,
+    createdPlaylistCount: subcountResult?.createdPlaylistCount,
+  };
+};
+
 const saveLogin = async (loginData: any, type: LoginType = "qr") => {
-  console.log("loginData:", loginData);
-  if (!loginData) return;
-  if (loginData.code === 200) {
-    // 更改状态
-    emit("close");
-    dataStore.userLoginStatus = true;
-    dataStore.loginType = type;
-    window.$message.success("登录成功");
-    // 保存 cookie
-    if (type !== "uid") setCookies(loginData.cookie);
-    // 保存登录时间
-    localStorage.setItem("lastLoginTime", Date.now().toString());
-    // 获取用户信息
+  if (!loginData || loginData.code !== 200) {
+    window.$message.error(loginData?.msg ?? loginData?.message ?? "账号或密码错误，请重试");
+    return;
+  }
+
+  emit("close");
+  dataStore.userLoginStatus = true;
+  dataStore.loginType = type;
+
+  if (type !== "uid") {
+    setCookies(loginData.cookie);
+  }
+
+  localStorage.setItem("lastLoginTime", Date.now().toString());
+
+  try {
     if (type !== "uid") {
-      await updateUserData();
+      await hydrateCoreUserData();
+      void updateUserData().catch((error) => {
+        console.error("Deferred user sync failed:", error);
+      });
     } else {
       await updateSpecialUserData(loginData?.profile);
     }
-    emit("success");
-  } else {
-    window.$message.error(loginData.msg ?? loginData.message ?? "账号或密码错误，请重试");
+    window.$message.success("登录成功");
+  } catch (error) {
+    console.error("Post-login sync failed:", error);
+    window.$message.warning("登录成功，但账号数据同步较慢，稍后会继续刷新");
   }
+
+  emit("success");
 };
 
-// 特殊登录
 const specialLogin = (type: "uid" | "cookie" = "uid") => {
   qrPause.value = true;
   const loginModal = window.$modal.create({
@@ -111,7 +142,7 @@ const specialLogin = (type: "uid" | "cookie" = "uid") => {
 
 onBeforeMount(() => {
   if (dataStore.userLoginStatus && !props.force) {
-    window.$message.warning("已登录，请勿再次操作");
+    window.$message.warning("已登录，请勿重复操作");
     emit("close");
   }
 });

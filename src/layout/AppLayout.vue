@@ -45,14 +45,16 @@
     <n-layout
       id="main"
       :class="{
+        'pad-layout': isPad,
+        'phone-layout': isPhone,
         'show-player': musicStore.isHasPlayer && statusStore.showPlayBar,
         'show-full-player': statusStore.showFullPlayer,
       }"
-      has-sider
+      :has-sider="isPad"
     >
       <!-- 侧边栏 -->
       <n-layout-sider
-        v-if="isDesktop"
+        v-if="isPad"
         id="main-sider"
         :style="{
           height:
@@ -89,7 +91,7 @@
             display: 'grid',
             gridTemplateRows: '1fr',
             minHeight: '100%',
-            padding: isMobile ? '0 16px' : '0 24px',
+            padding: isPhone ? '0 16px' : '0 24px',
           }"
           position="absolute"
           embedded
@@ -110,6 +112,26 @@
         </n-layout>
       </n-layout>
     </n-layout>
+    <Transition name="fade">
+      <nav
+        v-if="isPhone && !statusStore.showFullPlayer"
+        :class="[
+          'mobile-bottom-nav',
+          { 'is-raised': musicStore.isHasPlayer && statusStore.showPlayBar },
+        ]"
+      >
+        <button
+          v-for="item in phoneNavItems"
+          :key="item.key"
+          :class="['mobile-bottom-nav__item', { active: activePhoneNav === item.key }]"
+          type="button"
+          @click="navigatePhoneNav(item.routeName)"
+        >
+          <SvgIcon :name="item.icon" :size="22" />
+          <span>{{ item.label }}</span>
+        </button>
+      </nav>
+    </Transition>
     <!-- 播放列表 -->
     <SongPlayList />
     <!-- 全局播放器 -->
@@ -125,17 +147,37 @@
 import { useMusicStore, useStatusStore, useSettingStore, useDataStore } from "@/stores";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { isElectron } from "@/utils/env";
-import { useMobile } from "@/composables/useMobile";
+import { useDevice } from "@/composables/useDevice";
 import { useInit } from "@/composables/useInit";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const dataStore = useDataStore();
+const route = useRoute();
+const router = useRouter();
 
 const blobURLManager = useBlobURLManager();
 
-const { isDesktop, isMobile } = useMobile();
+const { isPad, isPhone } = useDevice();
+
+const phoneNavItems = [
+  { key: "home", label: "推荐", icon: "Home", routeName: "home" },
+  { key: "discover", label: "发现", icon: "Discover", routeName: "discover" },
+  { key: "like", label: "收藏", icon: "Star", routeName: "like" },
+  { key: "history", label: "最近", icon: "History", routeName: "history" },
+] as const;
+
+const activePhoneNav = computed(() => {
+  const routeName = String(route.name || "");
+
+  if (routeName.startsWith("discover")) return "discover";
+  if (routeName.startsWith("like")) return "like";
+  if (routeName.startsWith("history")) return "history";
+  if (routeName === "home") return "home";
+
+  return "home";
+});
 
 // 主内容
 const contentRef = ref<HTMLElement | null>(null);
@@ -163,6 +205,11 @@ watchEffect(() => {
   statusStore.mainContentHeight = contentHeight.value;
 });
 
+const navigatePhoneNav = (routeName: (typeof phoneNavItems)[number]["routeName"]) => {
+  if (route.name === routeName) return;
+  router.push({ name: routeName });
+};
+
 // 初始化
 useInit();
 
@@ -181,6 +228,10 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 #app-layout {
+  --safe-area-top: max(env(safe-area-inset-top), 0px);
+  --safe-area-bottom: max(env(safe-area-inset-bottom), 0px);
+  --app-header-height: calc(72px + var(--safe-area-top));
+  --phone-nav-height: 76px;
   width: 100%;
   height: 100%;
   display: flex;
@@ -224,11 +275,14 @@ onMounted(() => {
     transform 0.3s var(--n-bezier),
     opacity 0.3s var(--n-bezier);
   #main-layout {
-    // background-color: rgba(var(--background), 0.58);
-    background-color: rgba(var(--background));
+    background: linear-gradient(
+      180deg,
+      rgba(var(--background), 0.86),
+      rgba(var(--background), 0.78)
+    );
   }
   #main-content {
-    top: 70px;
+    top: var(--app-header-height);
     background-color: transparent;
     transition: bottom 0.3s;
     .router-view {
@@ -246,6 +300,16 @@ onMounted(() => {
       bottom: 80px;
     }
   }
+  &.phone-layout {
+    #main-content {
+      bottom: calc(var(--phone-nav-height) + var(--safe-area-bottom));
+    }
+    &.show-player {
+      #main-content {
+        bottom: calc(80px + var(--phone-nav-height) + var(--safe-area-bottom));
+      }
+    }
+  }
   &.show-full-player {
     opacity: 0;
     transform: scale(0.9);
@@ -253,5 +317,57 @@ onMounted(() => {
       -webkit-app-region: no-drag;
     }
   }
+}
+
+.mobile-bottom-nav {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(12px + var(--safe-area-bottom));
+  z-index: 9;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px;
+  border-radius: 24px;
+  transition:
+    transform 0.3s var(--n-bezier),
+    bottom 0.3s var(--n-bezier),
+    opacity 0.3s var(--n-bezier);
+
+  &__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 56px;
+    border: 0;
+    border-radius: 18px;
+    background: transparent;
+    color: var(--n-text-color-2);
+    transition:
+      background-color 0.3s var(--n-bezier),
+      color 0.3s var(--n-bezier),
+      transform 0.3s var(--n-bezier);
+
+    span {
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    &.active {
+      color: var(--primary-hex);
+      background: rgba(255, 255, 255, 0.32);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+}
+
+.mobile-bottom-nav.is-raised {
+  bottom: calc(92px + var(--safe-area-bottom));
 }
 </style>

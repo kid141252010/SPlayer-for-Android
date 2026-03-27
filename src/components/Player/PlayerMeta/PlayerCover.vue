@@ -1,7 +1,7 @@
 <template>
   <!-- 全屏封面 -->
   <div
-    v-if="settingStore.playerType === 'fullscreen' && !isTablet"
+    v-if="settingStore.playerType === 'fullscreen' && !isPhone"
     class="full-screen"
     :style="{ '--gradient-percent': settingStore.playerFullscreenGradient + '%' }"
   >
@@ -52,7 +52,7 @@
 
 <script setup lang="ts">
 import { songDynamicCover } from "@/api/song";
-import { useMobile } from "@/composables/useMobile";
+import { useDevice } from "@/composables/useDevice";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { useSettingStore, useStatusStore, useMusicStore } from "@/stores";
 import { isLogin } from "@/utils/auth";
@@ -63,7 +63,7 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
-const { isTablet } = useMobile();
+const { isPhone } = useDevice();
 
 // 本地歌曲高清封面（Data URL）
 const localCoverDataUrl = ref<string>("");

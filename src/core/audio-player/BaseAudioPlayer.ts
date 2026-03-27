@@ -90,11 +90,30 @@ export abstract class BaseAudioPlayer
   }
 
   /**
+   * 子类可按平台决定是否启用 Web Audio 音频图。
+   * Android WebView 在后台更容易对 AudioContext 降优先级，允许子类退回直连播放。
+   */
+  protected shouldUseAudioGraph(): boolean {
+    return true;
+  }
+
+  /**
+   * 当未启用 AudioGraph 时，由子类直接把音量应用到底层播放器。
+   */
+  protected applyNativeVolume(_targetValue: number, _duration: number, _curve: FadeCurve): void {}
+
+  /**
    * 初始化音频图谱
    * 链路: InputNode(子类 Source) -> EffectManager -> GainNode -> Destination
    */
   public init() {
     if (this.isInitialized) return;
+
+    if (!this.shouldUseAudioGraph()) {
+      this.isInitialized = true;
+      this.onGraphInitialized();
+      return;
+    }
 
     try {
       this.audioCtx = getSharedAudioContext();
@@ -342,7 +361,12 @@ export abstract class BaseAudioPlayer
    * @param curve 渐变曲线
    */
   protected applyFadeTo(targetValue: number, duration: number, curve: FadeCurve = "linear") {
-    if (!this.gainNode || !this.audioCtx) return;
+    const safeTargetValue = Math.max(0, Math.min(1, targetValue));
+
+    if (!this.gainNode || !this.audioCtx) {
+      this.applyNativeVolume(safeTargetValue, duration, curve);
+      return;
+    }
 
     const currentTime = this.audioCtx.currentTime;
     // 取消之前计划的音量变化
@@ -355,9 +379,9 @@ export abstract class BaseAudioPlayer
     if (duration <= 0) {
       const safeStartTime = currentTime + 0.02;
       if (Number.isFinite(safeStartTime) && safeStartTime > currentTime) {
-        this.gainNode.gain.linearRampToValueAtTime(targetValue, safeStartTime);
+        this.gainNode.gain.linearRampToValueAtTime(safeTargetValue, safeStartTime);
       } else {
-        this.gainNode.gain.setValueAtTime(targetValue, currentTime);
+        this.gainNode.gain.setValueAtTime(safeTargetValue, currentTime);
       }
       return;
     }
@@ -374,30 +398,30 @@ export abstract class BaseAudioPlayer
         const t = i / (steps - 1);
         let val = 0;
 
-        if (targetValue > currentValue) {
+        if (safeTargetValue > currentValue) {
           const factor = Math.sin((t * Math.PI) / 2);
-          val = currentValue + (targetValue - currentValue) * factor;
+          val = currentValue + (safeTargetValue - currentValue) * factor;
         } else {
           const factor = Math.cos((t * Math.PI) / 2);
-          val = targetValue + (currentValue - targetValue) * factor;
+          val = safeTargetValue + (currentValue - safeTargetValue) * factor;
         }
         curveData[i] = val;
       }
       this.gainNode.gain.setValueCurveAtTime(curveData, safeStartTime, duration);
     } else if (curve === "exponential") {
-      let safeTarget = targetValue;
+      let safeTarget = safeTargetValue;
       if (safeTarget <= 0.001) safeTarget = 0.001;
 
       if (currentValue < 0.001) {
-        this.gainNode.gain.linearRampToValueAtTime(targetValue, safeStartTime + duration);
+        this.gainNode.gain.linearRampToValueAtTime(safeTargetValue, safeStartTime + duration);
       } else {
         this.gainNode.gain.exponentialRampToValueAtTime(safeTarget, safeStartTime + duration);
-        if (targetValue === 0) {
+        if (safeTargetValue === 0) {
           this.gainNode.gain.setValueAtTime(0, safeStartTime + duration);
         }
       }
     } else {
-      this.gainNode.gain.linearRampToValueAtTime(targetValue, safeStartTime + duration);
+      this.gainNode.gain.linearRampToValueAtTime(safeTargetValue, safeStartTime + duration);
     }
   }
 

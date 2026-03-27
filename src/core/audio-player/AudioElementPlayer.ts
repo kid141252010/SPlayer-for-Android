@@ -6,6 +6,7 @@ import {
 } from "./BaseAudioPlayer";
 import type { EngineCapabilities } from "./IPlaybackEngine";
 import { useSettingStore } from "@/stores";
+import { isCapacitorAndroid } from "@/utils/env";
 
 /**
  * 基于 HTMLAudioElement 的播放器实现
@@ -18,6 +19,8 @@ export class AudioElementPlayer extends BaseAudioPlayer {
   private audioElement: HTMLAudioElement;
   /** MediaElementAudioSourceNode 用于连接 Web Audio API */
   private sourceNode: MediaElementAudioSourceNode | null = null;
+  /** Android 原生环境优先走直连播放，避免后台被 AudioContext 拖慢 */
+  private readonly useDirectPlayback = isCapacitorAndroid;
 
   /** Seek 锁，用于在 seek 过程中返回稳定的 currentTime */
   private isInternalSeeking = false;
@@ -27,20 +30,34 @@ export class AudioElementPlayer extends BaseAudioPlayer {
   /** 引擎能力描述 */
   public override readonly capabilities: EngineCapabilities = {
     supportsRate: true,
-    supportsSinkId: true,
-    supportsEqualizer: true,
-    supportsSpectrum: true,
+    supportsSinkId: !this.useDirectPlayback,
+    supportsEqualizer: !this.useDirectPlayback,
+    supportsSpectrum: !this.useDirectPlayback,
   };
 
   constructor() {
     super();
     this.audioElement = new Audio();
     this.audioElement.crossOrigin = "anonymous";
+    this.audioElement.preload = "auto";
+    this.audioElement.playsInline = true;
     this.bindInternalEvents();
 
     this.audioElement.addEventListener("seeked", () => {
       this.isInternalSeeking = false;
     });
+  }
+
+  protected override shouldUseAudioGraph(): boolean {
+    return !this.useDirectPlayback;
+  }
+
+  protected override applyNativeVolume(
+    targetValue: number,
+    _duration: number,
+    _curve: "linear" | "exponential" | "equalPower",
+  ): void {
+    this.audioElement.volume = Math.max(0, Math.min(1, targetValue));
   }
 
   /**
@@ -208,11 +225,7 @@ export class AudioElementPlayer extends BaseAudioPlayer {
     }
     const manualCompensation = isPlayback ? this.audioDelayCompensation / 1000 : 0;
     // 基础时间 - 自动延迟补偿 + 手动延迟补偿
-    return (
-      (this.audioElement.currentTime || 0) -
-      autoLatency +
-      manualCompensation
-    );
+    return (this.audioElement.currentTime || 0) - autoLatency + manualCompensation;
   }
 
   /** 获取是否暂停状态 */

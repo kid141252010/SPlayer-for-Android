@@ -32,8 +32,8 @@
         :playing="statusStore.playStatus"
         :enableSpring="settingStore.useAMSpring"
         :enableScale="settingStore.useAMSpring"
-        :alignPosition="settingStore.lyricsScrollOffset"
-        :alignAnchor="settingStore.lyricsScrollOffset > 0.4 ? 'center' : 'top'"
+        :alignPosition="effectiveLyricsScrollOffset"
+        :alignAnchor="effectiveLyricsScrollOffset > 0.4 ? 'center' : 'top'"
         :enableBlur="settingStore.lyricsBlur"
         :hidePassedLines="settingStore.hidePassedLines"
         :wordFadeWidth="settingStore.wordFadeWidth"
@@ -60,6 +60,7 @@ import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { cloneDeep } from "lodash-es";
+import { isCapacitorAndroid } from "@/utils/env";
 import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
 import { getFontSize } from "@/utils/style";
 
@@ -76,6 +77,12 @@ const settingStore = useSettingStore();
 const player = usePlayerController();
 
 const lyricPlayerRef = ref<any | null>(null);
+
+const effectiveLyricsScrollOffset = computed(() =>
+  isCapacitorAndroid
+    ? Math.max(0, settingStore.lyricsScrollOffset - 0.08)
+    : settingStore.lyricsScrollOffset,
+);
 
 // 当前歌词
 const amLyricsData = computed(() => {

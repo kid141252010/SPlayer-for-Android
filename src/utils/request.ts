@@ -1,40 +1,117 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosError, AxiosResponse } from "axios";
-import { isDev } from "./env";
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
+import axiosRetry from "axios-retry";
 import { useSettingStore } from "@/stores";
 import { getCookie } from "./cookie";
 import { isLogin } from "./auth";
-import axiosRetry from "axios-retry";
+import { isCapacitorAndroid, isCapacitorNative, isDev } from "./env";
+import { EMBEDDED_API_BASE_URL, waitForEmbeddedApiReady } from "./embeddedApi";
 
-// 全局地址
-const baseURL: string = String(isDev ? "/api/netease" : import.meta.env["VITE_API_URL"]);
+const DEV_PROXY_BASE_URL = "/api/netease";
+const ABSOLUTE_HTTP_URL_RE = /^https?:\/\//i;
 
-// 基础配置
+let apiConfigWarningShown = false;
+
+const normalizeApiBaseUrl = (value?: string | null): string => {
+  const normalized = String(value ?? "").trim();
+  if (!normalized || normalized === "undefined" || normalized === "null") {
+    return "";
+  }
+  return normalized.replace(/\/+$/, "");
+};
+
+const getEnvApiBaseUrl = (): string => normalizeApiBaseUrl(import.meta.env["VITE_API_URL"]);
+
+const getStoredApiBaseUrl = (): string => {
+  try {
+    return normalizeApiBaseUrl(useSettingStore().apiBaseUrl);
+  } catch {
+    return "";
+  }
+};
+
+const resolveApiBaseUrl = (): string => {
+  if (isDev && !isCapacitorNative) {
+    return DEV_PROXY_BASE_URL;
+  }
+
+  if (isCapacitorAndroid) {
+    return EMBEDDED_API_BASE_URL;
+  }
+
+  const configuredBaseUrl = getStoredApiBaseUrl() || getEnvApiBaseUrl() || "";
+
+  if (!configuredBaseUrl) {
+    return "";
+  }
+
+  if (isCapacitorNative && !ABSOLUTE_HTTP_URL_RE.test(configuredBaseUrl)) {
+    return "";
+  }
+
+  return configuredBaseUrl;
+};
+
+const notifyApiBaseUrlError = () => {
+  if (apiConfigWarningShown) {
+    return;
+  }
+
+  apiConfigWarningShown = true;
+
+  const message = isCapacitorNative
+    ? "Android 端未配置可访问的网易云 API 地址，请到 设置 > 网络代理 填写完整的 https:// 服务地址。"
+    : "当前未配置可访问的网易云 API 地址，请检查 VITE_API_URL 或设置页中的 API 地址。";
+
+  window.$message?.error(message, {
+    duration: 5000,
+  });
+};
+
+const attachApiBaseUrl = async (
+  request: InternalAxiosRequestConfig,
+): Promise<InternalAxiosRequestConfig> => {
+  const baseURL = resolveApiBaseUrl();
+
+  if (!baseURL) {
+    notifyApiBaseUrlError();
+    throw new AxiosError("Missing or invalid API base URL", AxiosError.ERR_BAD_REQUEST, request);
+  }
+
+  if (isCapacitorAndroid && baseURL === EMBEDDED_API_BASE_URL) {
+    await waitForEmbeddedApiReady();
+  }
+
+  request.baseURL = baseURL;
+  return request;
+};
+
 const server: AxiosInstance = axios.create({
-  baseURL,
-  // 允许跨域
   withCredentials: true,
-  // 超时时间
-  timeout: 15000,
+  timeout: 30000,
 });
 
-// 请求重试
 axiosRetry(server, {
-  // 重试次数
   retries: 3,
 });
 
-// 请求拦截器
 server.interceptors.request.use(
-  (request) => {
-    // pinia
+  async (request) => {
+    await attachApiBaseUrl(request);
+
     const settingStore = useSettingStore();
     if (!request.params) request.params = {};
-    // Cookie
+
     if (!request.params.noCookie && (isLogin() || getCookie("MUSIC_U") !== null)) {
       const cookie = `MUSIC_U=${getCookie("MUSIC_U")};os=pc;`;
       request.params.cookie = cookie;
     }
-    // 自定义 realIP
+
     if (settingStore.useRealIP) {
       if (settingStore.realIP) {
         request.params.realIP = settingStore.realIP;
@@ -42,67 +119,64 @@ server.interceptors.request.use(
         request.params.randomCNIP = true;
       }
     }
-    // proxy
+
     if (settingStore.proxyProtocol !== "off") {
       const protocol = settingStore.proxyProtocol.toLowerCase();
-      const server = settingStore.proxyServe;
+      const proxyServer = settingStore.proxyServe;
       const port = settingStore.proxyPort;
-      const proxy = `${protocol}://${server}:${port}`;
+      const proxy = `${protocol}://${proxyServer}:${port}`;
       if (proxy) request.params.proxy = proxy;
     }
-    // 发送请求
+
     return request;
   },
   (error: AxiosError) => {
-    console.error("请求发送失败：", error);
+    console.error("Request failed before dispatch:", error);
     return Promise.reject(error);
   },
 );
 
-// 响应拦截器
 server.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {
-    // 超时/网络错误
     if (
       error.code === "ECONNABORTED" ||
       error.message.includes("timeout") ||
       error.message.includes("Network Error")
     ) {
-      window.$message?.warning("网络请求超时，请检查网络连接");
-      // 返回 null 而非 reject，业务代码需要检查返回值
+      const activeBaseUrl = String(error.config?.baseURL || resolveApiBaseUrl() || "未配置");
+      window.$message?.warning(
+        `网络请求超时，请检查 API 服务地址和当前网络连接。当前地址: ${activeBaseUrl}`,
+      );
       return Promise.resolve({ data: null });
     }
 
     const { response } = error;
-    // 状态码处理（仅记录日志，不触发弹窗）
     switch (response?.status) {
       case 400:
-        console.warn("客户端错误：", response.status, response.statusText);
+        console.warn("Bad request:", response.status, response.statusText);
         break;
       case 401:
-        console.warn("未授权：", response.status, response.statusText);
+        console.warn("Unauthorized:", response.status, response.statusText);
         break;
       case 403:
-        console.warn("禁止访问：", response.status, response.statusText);
+        console.warn("Forbidden:", response.status, response.statusText);
         break;
       case 404:
-        console.warn("未找到资源：", response.status, response.statusText);
+        console.warn("Not found:", response.status, response.statusText);
         break;
       case 500:
-        console.warn("服务器错误：", response.status, response.statusText);
+        console.warn("Server error:", response.status, response.statusText);
         break;
       default:
-        console.warn("未处理的错误：", error.message);
+        console.warn("Unhandled request error:", error.message);
     }
-    // 返回错误
+
     return Promise.reject(error);
   },
 );
 
-// 请求
 const request = async <T = any>(config: AxiosRequestConfig): Promise<T> => {
-  // 返回请求数据
   const { data } = await server.request(config);
   return data as T;
 };

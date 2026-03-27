@@ -7,7 +7,7 @@
     :class="{ cover: settingStore.menuShowCover }"
     :indent="0"
     :root-indent="26"
-    :collapsed="statusStore.menuCollapsed && isDesktop"
+    :collapsed="statusStore.menuCollapsed && isPad"
     :collapsed-width="64"
     :collapsed-icon-size="22"
     :options="menuOptions"
@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import { useMobile } from "@/composables/useMobile";
+import { useDevice } from "@/composables/useDevice";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { useSongManager } from "@/core/player/SongManager";
 import {
@@ -57,7 +57,7 @@ const settingStore = useSettingStore();
 const player = usePlayerController();
 const songManager = useSongManager();
 
-const { isDesktop } = useMobile();
+const { isPad } = useDevice();
 
 // 菜单数据
 const menuRef = ref<MenuInst | null>(null);

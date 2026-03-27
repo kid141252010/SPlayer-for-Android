@@ -136,6 +136,7 @@ export interface SettingState {
   downloadSongLevel: SongLevelType;
   /** 代理协议 */
   proxyProtocol: "off" | "http" | "https";
+  apiBaseUrl: string;
   /** 代理地址 */
   proxyServe: string;
   /** 代理端口 */
@@ -639,6 +640,7 @@ export const useSettingStore = defineStore("setting", {
     saveMetaFile: false,
     downloadSongLevel: "h",
     proxyProtocol: "off",
+    apiBaseUrl: "",
     proxyServe: "127.0.0.1",
     proxyPort: 80,
     useRealIP: false,

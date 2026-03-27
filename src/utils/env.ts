@@ -1,4 +1,6 @@
 /** 是否为开发环境 */
+import { Capacitor } from "@capacitor/core";
+
 export const isDev = import.meta.env.MODE === "development" || import.meta.env.DEV;
 
 /** 系统判断 */
@@ -12,6 +14,9 @@ export const isMac = userAgent.includes("Macintosh");
 export const isLinux = userAgent.includes("Linux");
 /** 是否为 Electron 环境 */
 export const isElectron = userAgent.includes("Electron") || typeof window?.electron !== "undefined";
+export const isCapacitorNative = Capacitor.isNativePlatform();
+export const capacitorPlatform = Capacitor.getPlatform();
+export const isCapacitorAndroid = isCapacitorNative && capacitorPlatform === "android";
 
 /** 是否为移动端 */
 export const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(

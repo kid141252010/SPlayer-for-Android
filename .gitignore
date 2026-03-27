@@ -40,3 +40,27 @@ docs/.vitepress/dist
 .trae/*
 .cursor/*
 .claude/*
+
+# Gradle / Android Studio
+.gradle/
+android/.gradle/
+android/local.properties
+android/captures/
+android/build/
+android/app/build/
+
+# Android generated assets
+android/app/src/main/assets/public/
+android/app/src/main/assets/www/nodejs-project/
+android/app/src/main/assets/nodejs-mobile-cordova-assets/
+
+# Android signing / outputs
+*.jks
+*.keystore
+key.properties
+*.apk
+*.aab
+*.apks
+
+# GitHub Actions temp release files
+release/

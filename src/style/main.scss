@@ -12,6 +12,11 @@
 }
 
 :root {
+  --safe-area-top: max(env(safe-area-inset-top), 0px);
+  --safe-area-right: max(env(safe-area-inset-right), 0px);
+  --safe-area-bottom: max(env(safe-area-inset-bottom), 0px);
+  --safe-area-left: max(env(safe-area-inset-left), 0px);
+
   // 图片模式
   &.image {
     --background-hex: rgba(0, 0, 0, 0.1) !important;
@@ -29,8 +34,9 @@
       background-color: transparent !important;
     }
     .main-player {
-      background-color: var(--surface-container-hex);
+      background-color: var(--surface-container-hex) !important;
       backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
     // 内置组件
     .n-card,
@@ -77,6 +83,7 @@ body {
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  overscroll-behavior: none;
 }
 
 a,
@@ -91,6 +98,10 @@ audio {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+.android-capacitor {
+  background-color: rgb(var(--background));
 }
 
 // text-hidden

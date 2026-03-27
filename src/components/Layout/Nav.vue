@@ -2,7 +2,7 @@
   <n-layout-header class="nav">
     <!-- 页面导航 -->
     <n-flex class="page-control">
-      <Logo v-if="!isDesktop" :size="40" @click="router.push('/')" />
+      <Logo v-if="isPhone" :size="40" @click="router.push('/')" />
       <template v-if="!isSmallScreen">
         <n-button :focusable="false" tertiary circle @click="router.go(-1)">
           <template #icon>
@@ -34,7 +34,7 @@
       <!-- 搜索 -->
       <SearchInp v-if="settingStore.useOnlineService" />
       <!-- 可拖拽 -->
-      <div v-if="isDesktop" class="nav-drag" />
+      <div v-if="isPad" class="nav-drag" />
       <n-flex align="center">
         <!-- 用户 -->
         <User v-if="settingStore.useOnlineService" />
@@ -47,13 +47,7 @@
           </n-button>
         </n-dropdown>
         <!-- 移动端菜单 -->
-        <n-button
-          v-if="!isDesktop"
-          :focusable="false"
-          tertiary
-          circle
-          @click="showAside = !showAside"
-        >
+        <n-button v-if="isPhone" :focusable="false" tertiary circle @click="showAside = !showAside">
           <template #icon>
             <SvgIcon name="Menu" />
           </template>
@@ -145,6 +139,7 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useSettingStore, useStatusStore } from "@/stores";
+import { useDevice } from "@/composables/useDevice";
 import { renderIcon } from "@/utils/helper";
 import { openSetting, openThemeConfig, openScalingModal, openUpdateApp } from "@/utils/modal";
 import { isDev, isElectron } from "@/utils/env";
@@ -153,7 +148,8 @@ import { useMobile } from "@/composables/useMobile";
 const router = useRouter();
 const settingStore = useSettingStore();
 const statusStore = useStatusStore();
-const { isDesktop, isSmallScreen } = useMobile();
+const { isPad, isPhone } = useDevice();
+const { isSmallScreen } = useMobile();
 
 // 更新按钮提示
 const updateBtnTitle = computed(() => {
@@ -308,8 +304,8 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 70px;
-  padding: 0 1rem;
+  height: var(--app-header-height);
+  padding: calc(10px + var(--safe-area-top)) 1rem 10px;
   background-color: transparent;
   -webkit-app-region: drag;
   .n-button {

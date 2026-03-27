@@ -53,14 +53,12 @@ const emit = defineEmits<{
   saveLogin: [any, LoginType];
 }>();
 
-// 表单类型
 interface PhoneFormType {
   country: number;
   phone: number | null;
   captcha: number | null;
 }
 
-// 表单数据
 const phoneFormRef = ref<FormInst | null>(null);
 const phoneFormData = ref<PhoneFormType>({
   country: 86,
@@ -80,15 +78,11 @@ const phoneFormRules = computed<FormRules>(() => ({
   captcha: { ...numberRule, message: "请输入正确的验证码" },
 }));
 
-// 验证码数据
 const captchaTime = ref<number>(60);
 const captchaText = ref<string>("获取验证码");
 const captchaDisabled = ref<boolean>(false);
-
-// 国家列表
 const countryListData = ref<SelectOption[]>([]);
 
-// 获取国家列表
 const getCountryListData = async () => {
   try {
     const result = await getCacheData(countryList, {
@@ -96,7 +90,6 @@ const getCountryListData = async () => {
       key: "countryListData",
       time: 0,
     });
-    // 转换数据格式
     const transformedData = result.data.map((group: any) => ({
       type: "group",
       label: group.label,
@@ -108,7 +101,7 @@ const getCountryListData = async () => {
     }));
     countryListData.value = transformedData;
   } catch (error) {
-    console.error("获取国家列表失败：", error);
+    console.error("获取国家列表失败:", error);
     countryListData.value = [
       {
         key: "86",
@@ -119,21 +112,20 @@ const getCountryListData = async () => {
   }
 };
 
-// 获取验证码
 const getCaptcha = async (e: MouseEvent) => {
   e.preventDefault();
-  // 是否输入
   await phoneFormRef.value?.validate(
     (errors) => errors,
     (rule) => rule?.key === "phone",
   );
-  // 发送验证码
+
   captchaDisabled.value = true;
   const result = await sentCaptcha(
     phoneFormData.value.phone as number,
     phoneFormData.value.country as number,
   );
-  if (result.code === 200) {
+
+  if (result?.code === 200) {
     resumeTime();
     window.$message.success("验证码发送成功");
   } else {
@@ -142,7 +134,6 @@ const getCaptcha = async (e: MouseEvent) => {
   }
 };
 
-// 更改验证码状态
 const { pause: pauseTime, resume: resumeTime } = useIntervalFn(
   () => {
     captchaTime.value--;
@@ -160,36 +151,32 @@ const { pause: pauseTime, resume: resumeTime } = useIntervalFn(
   },
 );
 
-// 登录
 const login = debounce(async (e: MouseEvent) => {
   e.preventDefault();
-  // 验证输入
   await phoneFormRef.value?.validate();
-  // 验证验证码
+
   const captchaResult = await verifyCaptcha(
     phoneFormData.value.phone as number,
     phoneFormData.value.captcha as number,
     phoneFormData.value.country as number,
   );
-  if (captchaResult.code !== 200) {
-    window.$message.error("验证码错误，请重试");
+  if (!captchaResult || captchaResult.code !== 200) {
+    window.$message.error("验证码校验失败，请重试");
     return;
   }
-  // 登录
+
   const loginResult = await loginPhone(
     phoneFormData.value.phone as number,
     phoneFormData.value.captcha as number,
     phoneFormData.value.country as number,
   );
-  if (loginResult.code !== 200) {
+  if (!loginResult || loginResult.code !== 200) {
     window.$message.error("登录失败，请重试");
     return;
   }
-  // 是否含有 MUSIC_U
+
   if (loginResult.cookie && loginResult.cookie.includes("MUSIC_U")) {
-    // 去除 HTTPOnly
     loginResult.cookie = loginResult.cookie.replaceAll(" HTTPOnly", "");
-    // 储存登录信息
     emit("saveLogin", loginResult, "phone");
   } else {
     window.$message.error("登录出错，请重试");

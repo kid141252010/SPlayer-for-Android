@@ -1,5 +1,5 @@
 import { useSettingStore } from "@/stores";
-import { isElectron } from "@/utils/env";
+import { isCapacitorNative, isElectron } from "@/utils/env";
 import { SettingConfig } from "@/types/settings";
 import { computed, ref, h, markRaw } from "vue";
 import { debounce } from "lodash-es";
@@ -11,6 +11,13 @@ import StreamingServerList from "../components/StreamingServerList.vue";
 export const useNetworkSettings = (): SettingConfig => {
   const settingStore = useSettingStore();
   const testProxyLoading = ref<boolean>(false);
+  const testApiBaseUrlLoading = ref<boolean>(false);
+  const showApiBaseUrl = !isElectron;
+  const apiBaseUrlDescription = computed(() =>
+    isCapacitorNative
+      ? "Android 版必须填写可访问的 NeteaseCloudMusicApi 服务地址，需包含 http:// 或 https://。"
+      : "如果当前环境没有反向代理，请在这里填写完整的 NeteaseCloudMusicApi 服务地址。",
+  );
 
   // --- Network Proxy Logic (from other.ts) ---
   const proxyConfig = computed(() => ({
@@ -42,6 +49,41 @@ export const useNetworkSettings = (): SettingConfig => {
       window.$message.error("代理测试失败，请重试");
     }
     testProxyLoading.value = false;
+  };
+
+  const testApiBaseUrl = async () => {
+    const apiBaseUrl = String(settingStore.apiBaseUrl ?? "")
+      .trim()
+      .replace(/\/+$/, "");
+    if (!apiBaseUrl) {
+      window.$message.error("请先填写网易云 API 地址");
+      return;
+    }
+
+    testApiBaseUrlLoading.value = true;
+
+    try {
+      const response = await fetch(`${apiBaseUrl}/login/qr/key?timestamp=${Date.now()}`);
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.code === 200 && data?.data?.unikey) {
+        window.$message.success("API 连接正常");
+        return;
+      }
+
+      if (response.status === 404) {
+        window.$message.error("API 地址不正确，通常需要填写到 /api/netease 这一层");
+        return;
+      }
+
+      window.$message.error(
+        `API 测试失败: ${data?.message || response.statusText || response.status}`,
+      );
+    } catch (error: any) {
+      window.$message.error(`API 测试失败: ${error?.message || "无法连接到服务"}`);
+    } finally {
+      testApiBaseUrlLoading.value = false;
+    }
   };
 
   // --- Discord RPC Logic (from third.ts) ---
@@ -237,6 +279,30 @@ export const useNetworkSettings = (): SettingConfig => {
       {
         title: "网络代理",
         items: [
+          {
+            key: "apiBaseUrl",
+            label: "网易云 API 地址",
+            show: showApiBaseUrl,
+            type: "text-input",
+            description: apiBaseUrlDescription,
+            prefix: "URL",
+            defaultValue: "",
+            componentProps: {
+              placeholder: "https://music-api.example.com",
+              clearable: true,
+            },
+            extraButton: {
+              label: "测试 API",
+              action: testApiBaseUrl,
+              type: "primary",
+              secondary: true,
+              strong: true,
+            },
+            value: computed({
+              get: () => settingStore.apiBaseUrl,
+              set: (v) => (settingStore.apiBaseUrl = String(v ?? "").trim()),
+            }),
+          },
           {
             key: "proxyProtocol",
             label: "网络代理",

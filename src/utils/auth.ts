@@ -25,6 +25,21 @@ import { likeAlbum } from "@/api/album";
 import { radioSub } from "@/api/radio";
 import router from "@/router";
 
+type BackgroundSyncTask = {
+  name: string;
+  task: () => Promise<unknown>;
+};
+
+const _runBackgroundUserSync = (tasks: BackgroundSyncTask[]) => {
+  void Promise.allSettled(tasks.map(({ task }) => task())).then((results) => {
+    results.forEach((result, index) => {
+      if (result.status === "rejected") {
+        console.warn(`Non-critical user sync failed: ${tasks[index]?.name}`, result.reason);
+      }
+    });
+  });
+};
+
 /**
  * 用户是否登录
  * @returns 0 - 未登录 / 1 - 正常登录 / 2 - UID 登录
@@ -212,11 +227,10 @@ export const updateUserData = async () => {
     const { profile } = await userAccount();
     const userId = profile.userId;
     // 获取用户信息
-    const userDetailData = await userDetail(userId);
+    const [userDetailData, subcountData] = await Promise.all([userDetail(userId), userSubcount()]);
     const userData = Object.assign(profile, userDetailData);
 
     // 获取用户订阅信息
-    const subcountData = await userSubcount();
     // 获取用户 VIP 信息
 
     // 更改用户信息

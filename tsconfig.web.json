@@ -1,18 +1,21 @@
 {
-  "extends": "@electron-toolkit/tsconfig/tsconfig.web.json",
-  "include": [
-    "src/env.d.ts",
-    "src/**/*",
-    "src/**/*.vue",
-    "electron/main/index.d.ts",
-    "electron/preload/index.d.ts",
-    "dist/lastfm.ts"
-  ],
   "compilerOptions": {
     "composite": true,
-    "esModuleInterop": true,
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
+    "skipLibCheck": true,
     "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "preserve",
+    "esModuleInterop": true,
     "maxNodeModuleJsDepth": 2,
+    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "@emi": ["./native/external-media-integration"],
@@ -20,8 +23,7 @@
       "@opencc": ["./native/ferrous-opencc-wasm/pkg"],
       "@shared": ["./src/types/shared"]
     },
-    "types": ["node", "electron", "electron-vite/node", "./auto-imports.d.ts", "./components.d.ts"],
-    "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
-    "target": "es2022"
-  }
+    "types": ["node", "./auto-imports.d.ts", "./components.d.ts"]
+  },
+  "include": ["src/env.d.ts", "src/**/*", "src/**/*.vue", "dist/lastfm.ts"]
 }

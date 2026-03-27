@@ -15,7 +15,7 @@
         <!-- 背景 -->
         <PlayerBackground />
         <!-- 移动端 -->
-        <FullPlayerMobile v-if="isTablet" />
+        <FullPlayerMobile v-if="useCompactMobilePlayer" />
         <!-- 桌面端 -->
         <template v-else>
           <!-- 独立歌词 -->
@@ -93,7 +93,7 @@
 </template>
 
 <script setup lang="ts">
-import { useMobile } from "@/composables/useMobile";
+import { useDevice } from "@/composables/useDevice";
 import { useStatusStore, useMusicStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 
@@ -101,7 +101,8 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
-const { isTablet } = useMobile();
+const { isLandscape, isPhone } = useDevice();
+const useCompactMobilePlayer = computed(() => isPhone.value && !isLandscape.value);
 
 /** 封面主颜色 */
 const mainCoverColor = useCssVar("--main-cover-color", document.documentElement);
@@ -125,7 +126,7 @@ const showComment = computed<boolean>(
     statusStore.showPlayerComment &&
     !musicStore.playSong.path &&
     !statusStore.pureLyricMode &&
-    !isTablet.value,
+    !isPhone.value,
 );
 
 /** 评论显示模式 */

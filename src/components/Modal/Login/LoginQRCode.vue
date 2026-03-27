@@ -12,7 +12,6 @@
           icon-src="/icons/favicon.png?asset"
           error-correction-level="H"
         />
-        <!-- 待确认 -->
         <Transition name="fade" mode="out-in">
           <div v-if="loginName" class="login-data">
             <n-image
@@ -50,88 +49,88 @@ const emit = defineEmits<{
   saveLogin: [any, LoginType];
 }>();
 
-// 状态提示
 const qrCodeTip = {
-  800: "二维码过期，即将重试",
-  801: "请打开云音乐 APP 扫码登录",
+  800: "二维码已过期，即将重试",
+  801: "请打开网易云音乐 App 扫码登录",
   802: "扫描成功，请在客户端确认登录",
   803: "登录成功",
 } as const;
 
-// 二维码数据
 const qrImg = ref<string>("");
 const qrUnikey = ref<string>("");
 const qrStatusCode = ref<keyof typeof qrCodeTip>(801);
+const qrChecking = ref(false);
 
-// 提示文本
 const qrTipText = computed(() => {
   return qrCodeTip[qrStatusCode.value] || "遇到未知状态，请重试";
 });
 
-// 待确认数据
 const loginName = ref<string>("");
 const loginAvatar = ref<string>("");
 
-// 获取二维码
 const getQrData = async () => {
   try {
     pauseCheck();
+    qrChecking.value = false;
     qrStatusCode.value = 801;
     loginName.value = "";
     loginAvatar.value = "";
-    // 获取 key
+
     const res = await qrKey();
-    qrImg.value = `https://music.163.com/login?codekey=${res.data.unikey}`;
-    // 更改 key
-    qrUnikey.value = res.data.unikey;
-    // 检查状态
+    const unikey = res?.data?.unikey;
+    if (!unikey) return;
+
+    qrImg.value = `https://music.163.com/login?codekey=${unikey}`;
+    qrUnikey.value = unikey;
     resumeCheck();
   } catch (error) {
     pauseCheck();
-    console.error("二维码获取失败：", error);
+    console.error("二维码获取失败:", error);
   }
 };
 
-// 检查二维码状态
 const checkQrStatus = async () => {
-  if (!qrUnikey.value || props.pause) return;
-  // 检查状态
-  const { code, cookie, nickname, avatarUrl } = await checkQr(qrUnikey.value);
-  switch (code) {
-    // 二维码过期
-    case 800:
-      qrStatusCode.value = 800;
-      getQrData();
-      break;
-    // 等待扫码
-    case 801:
-      qrStatusCode.value = 801;
-      break;
-    // 待确认
-    case 802:
-      qrStatusCode.value = 802;
-      loginName.value = nickname;
-      loginAvatar.value = avatarUrl;
-      break;
-    // 登录成功
-    case 803:
-      qrStatusCode.value = 803;
-      pauseCheck();
-      // 是否含有 MUSIC_U
-      if (cookie && cookie.includes("MUSIC_U")) {
-        // 储存登录信息
-        emit("saveLogin", { code: 200, cookie }, "qr");
-      } else {
-        window.$message.error("登录出错，请重试");
-        getQrData();
-      }
-      break;
-    default:
-      break;
+  if (!qrUnikey.value || props.pause || qrChecking.value) return;
+
+  qrChecking.value = true;
+  try {
+    const result = await checkQr(qrUnikey.value);
+    if (!result) return;
+
+    const { code, cookie, nickname, avatarUrl } = result;
+    switch (code) {
+      case 800:
+        qrStatusCode.value = 800;
+        void getQrData();
+        break;
+      case 801:
+        qrStatusCode.value = 801;
+        break;
+      case 802:
+        qrStatusCode.value = 802;
+        loginName.value = nickname;
+        loginAvatar.value = avatarUrl;
+        break;
+      case 803:
+        qrStatusCode.value = 803;
+        pauseCheck();
+        if (cookie && cookie.includes("MUSIC_U")) {
+          emit("saveLogin", { code: 200, cookie }, "qr");
+        } else {
+          window.$message.error("登录出错，请重试");
+          void getQrData();
+        }
+        break;
+      default:
+        break;
+    }
+  } catch (error) {
+    console.error("二维码状态检查失败:", error);
+  } finally {
+    qrChecking.value = false;
   }
 };
 
-// 控制检查二维码
 const { pause: pauseCheck, resume: resumeCheck } = useIntervalFn(checkQrStatus, 1000, {
   immediate: false,
 });

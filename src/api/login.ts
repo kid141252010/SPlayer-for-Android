@@ -1,9 +1,11 @@
 import request from "@/utils/request";
 
-// 生成二维码 key
+const LOGIN_REQUEST_TIMEOUT = 30000;
+
 export const qrKey = () => {
   return request({
     url: "/login/qr/key",
+    timeout: LOGIN_REQUEST_TIMEOUT,
     params: {
       noCookie: true,
       timestamp: Date.now(),
@@ -11,10 +13,10 @@ export const qrKey = () => {
   });
 };
 
-// 生成二维码
 export const qrCreate = (key: string, qrimg: boolean = true) => {
   return request({
     url: "/login/qr/create",
+    timeout: LOGIN_REQUEST_TIMEOUT,
     params: {
       key,
       qrimg,
@@ -24,10 +26,10 @@ export const qrCreate = (key: string, qrimg: boolean = true) => {
   });
 };
 
-// 检查二维码状态
 export const checkQr = (key: string) => {
   return request({
     url: "/login/qr/check",
+    timeout: LOGIN_REQUEST_TIMEOUT,
     params: {
       key,
       noCookie: true,
@@ -36,10 +38,10 @@ export const checkQr = (key: string) => {
   });
 };
 
-// 手机号登录
 export const loginPhone = (phone: number, captcha: number, ctcode: number = 86) => {
   return request({
     url: "/login/cellphone",
+    timeout: LOGIN_REQUEST_TIMEOUT,
     params: {
       phone,
       captcha,
@@ -50,10 +52,10 @@ export const loginPhone = (phone: number, captcha: number, ctcode: number = 86) 
   });
 };
 
-// 发送验证码
 export const sentCaptcha = (phone: number, ctcode: number = 86) => {
   return request({
     url: "/captcha/sent",
+    timeout: LOGIN_REQUEST_TIMEOUT,
     params: {
       phone,
       ctcode,
@@ -63,10 +65,10 @@ export const sentCaptcha = (phone: number, ctcode: number = 86) => {
   });
 };
 
-// 验证验证码是否正确
 export const verifyCaptcha = (phone: number, captcha: number, ctcode: number = 86) => {
   return request({
     url: "/captcha/verify",
+    timeout: LOGIN_REQUEST_TIMEOUT,
     params: {
       phone,
       captcha,
@@ -76,39 +78,39 @@ export const verifyCaptcha = (phone: number, captcha: number, ctcode: number = 8
   });
 };
 
-// 获取登录状态
 export const getLoginState = () => {
   return request({
     url: "/login/status",
+    timeout: LOGIN_REQUEST_TIMEOUT,
     params: {
       timestamp: Date.now(),
     },
   });
 };
 
-// 刷新登录
 export const refreshLogin = () => {
   return request({
     url: "/login/refresh",
+    timeout: LOGIN_REQUEST_TIMEOUT,
     params: {
       timestamp: Date.now(),
     },
   });
 };
 
-// 退出登录
 export const logout = () => {
   return request({
     url: "/logout",
+    timeout: LOGIN_REQUEST_TIMEOUT,
     params: {
       timestamp: Date.now(),
     },
   });
 };
 
-// 国家码列表
 export const countryList = () => {
   return request({
     url: "/countries/code/list",
+    timeout: LOGIN_REQUEST_TIMEOUT,
   });
 };
