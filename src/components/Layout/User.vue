@@ -22,7 +22,7 @@
             <SvgIcon name="Person" :depth="3" size="26" />
           </n-avatar>
         </div>
-        <n-flex v-if="isDesktop" :wrap="false" class="user-data" size="small">
+        <n-flex v-if="isPad" :wrap="false" class="user-data" size="small">
           <n-text class="name text-hidden">
             {{ dataStore.userLoginStatus ? dataStore.userData.name || "未知用户名" : "未登录" }}
           </n-text>
@@ -118,12 +118,12 @@ import {
   switchAccount,
   removeAccount,
 } from "@/utils/auth";
-import { useMobile } from "@/composables/useMobile";
+import { useDevice } from "@/composables/useDevice";
 
 const router = useRouter();
 const dataStore = useDataStore();
 
-const { isDesktop } = useMobile();
+const { isPad } = useDevice();
 
 // 用户菜单展示
 const userMenuShow = ref<boolean>(false);

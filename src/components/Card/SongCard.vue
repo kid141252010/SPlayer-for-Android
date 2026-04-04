@@ -141,7 +141,7 @@
       </div>
       <!-- 专辑 -->
       <div
-        v-if="song.type !== 'radio' && !hiddenAlbum && !isSmallScreen && settingStore.showSongAlbum"
+        v-if="song.type !== 'radio' && !hiddenAlbum && !isPhone && settingStore.showSongAlbum"
         class="album text-hidden"
       >
         <n-text
@@ -169,7 +169,7 @@
       >
         <!-- 喜欢歌曲 -->
         <SvgIcon
-          v-if="!isSmallScreen"
+          v-if="!isPhone"
           :name="dataStore.isLikeSong(song.id) ? 'Favorite' : 'FavoriteBorder'"
           :size="20"
           @click.stop="toLikeSong(song, !dataStore.isLikeSong(song.id))"
@@ -179,19 +179,19 @@
         <SvgIcon v-else name="More" :size="20" @click.stop="emit('show-menu', $event)" />
       </div>
       <!-- 更新日期 -->
-      <n-text v-if="song.type === 'radio' && !isSmallScreen" class="meta date" depth="3">
+      <n-text v-if="song.type === 'radio' && !isPhone" class="meta date" depth="3">
         {{ formatTimestamp(song.updateTime) }}
       </n-text>
       <!-- 播放量 -->
-      <n-text v-if="song.type === 'radio' && !isSmallScreen" class="meta" depth="3">
+      <n-text v-if="song.type === 'radio' && !isPhone" class="meta" depth="3">
         {{ formatNumber(song.playCount || 0) }}
       </n-text>
       <!-- 时长 -->
-      <n-text v-if="!isSmallScreen && settingStore.showSongDuration" class="meta" depth="3">
+      <n-text v-if="!isPhone && settingStore.showSongDuration" class="meta" depth="3">
         {{ msToTime(song.duration) }}
       </n-text>
       <!-- 大小 -->
-      <n-text v-if="song.size && !hiddenSize && !isSmallScreen" class="meta size" depth="3">
+      <n-text v-if="song.size && !hiddenSize && !isPhone" class="meta size" depth="3">
         {{ formatFileSize(song.size) }}
       </n-text>
     </div>
@@ -208,7 +208,7 @@ import { toLikeSong } from "@/utils/auth";
 import { isObject } from "lodash-es";
 import { formatTimestamp, msToTime } from "@/utils/time";
 import { usePlayerController } from "@/core/player/PlayerController";
-import { useMobile } from "@/composables/useMobile";
+import { useDevice } from "@/composables/useDevice";
 import { EXPLICIT_CONTENT_MARK } from "@/utils/meta";
 
 const props = defineProps<{
@@ -226,7 +226,7 @@ const emit = defineEmits<{
   "show-menu": [event: MouseEvent];
 }>();
 
-const { isSmallScreen } = useMobile();
+const { isPhone } = useDevice();
 const router = useRouter();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();

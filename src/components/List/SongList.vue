@@ -64,7 +64,7 @@
             <n-text v-else class="title">标题</n-text>
             <n-text
               v-if="
-                type !== 'radio' && !hiddenAlbum && !isSmallScreen && settingStore.showSongAlbum
+                type !== 'radio' && !hiddenAlbum && !isPhone && settingStore.showSongAlbum
               "
               class="album"
             >
@@ -73,12 +73,12 @@
             <n-text v-if="type !== 'radio' && settingStore.showSongOperations" class="actions">
               操作
             </n-text>
-            <n-text v-if="type === 'radio' && !isSmallScreen" class="meta date">更新日期</n-text>
-            <n-text v-if="type === 'radio' && !isSmallScreen" class="meta">播放量</n-text>
-            <n-text v-if="!isSmallScreen && settingStore.showSongDuration" class="meta">
+            <n-text v-if="type === 'radio' && !isPhone" class="meta date">更新日期</n-text>
+            <n-text v-if="type === 'radio' && !isPhone" class="meta">播放量</n-text>
+            <n-text v-if="!isPhone && settingStore.showSongDuration" class="meta">
               时长
             </n-text>
-            <n-text v-if="data?.[0].size && !hiddenSize && !isSmallScreen" class="meta size">
+            <n-text v-if="data?.[0].size && !hiddenSize && !isPhone" class="meta size">
               大小
             </n-text>
           </div>
@@ -202,7 +202,7 @@ import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { isEmpty } from "lodash-es";
 import { sortFieldOptions, sortOrderOptions } from "@/utils/meta";
 import { usePlayerController } from "@/core/player/PlayerController";
-import { useMobile } from "@/composables/useMobile";
+import { useDevice } from "@/composables/useDevice";
 import { useDragSort } from "@/composables/List/useDragSort";
 import SongListMenu from "@/components/Menu/SongListMenu.vue";
 import MobileSongMenu from "@/components/Menu/MobileSongMenu.vue";
@@ -269,7 +269,7 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();
-const { isSmallScreen } = useMobile();
+const { isPhone } = useDevice();
 
 // 列表元素
 const listRef = ref<InstanceType<typeof VirtualScroll> | null>(null);
@@ -294,7 +294,7 @@ const {
 
 // 处理移动端单击播放
 const handleSongClick = (song: SongType) => {
-  if (isSmallScreen.value) {
+  if (isPhone.value) {
     handleSongPlay(song);
   }
 };
@@ -320,7 +320,7 @@ const songListMenuRef = ref<InstanceType<typeof SongListMenu> | null>(null);
 const mobileSongMenuRef = ref<InstanceType<typeof MobileSongMenu> | null>(null);
 
 const handleShowMenu = (e: MouseEvent, song: SongType, index: number) => {
-  if (isSmallScreen.value) {
+  if (isPhone.value) {
     mobileSongMenuRef.value?.open(song, index, props.playListId, props.isDailyRecommend);
   } else {
     songListMenuRef.value?.openDropdown(

@@ -4,9 +4,7 @@
       <n-h1>{{ greetings }}</n-h1>
       <n-text depth="3">由此开启好心情 ~</n-text>
     </div>
-    <!-- 在线模式 -->
     <HomeOnline v-if="settingStore.useOnlineService" />
-    <!-- 本地模式 -->
     <HomeLocal v-else />
   </div>
 </template>
@@ -21,7 +19,6 @@ import HomeLocal from "./HomeLocal.vue";
 const settingStore = useSettingStore();
 const dataStore = useDataStore();
 
-// 问候语
 const greetings = computed(() => {
   const greeting = getGreeting();
   const name = isLogin() ? dataStore.userData.name : "";
@@ -34,12 +31,28 @@ const greetings = computed(() => {
   width: 100%;
   max-width: 1500px;
   margin: 0 auto;
+  padding-bottom: 20px;
+
   .welcome {
     margin-top: 8px;
     margin-bottom: 20px;
+
     .n-h1 {
       margin: 0;
       font-weight: bold;
+    }
+  }
+
+  @media (max-width: 768px) {
+    max-width: 100%;
+
+    .welcome {
+      margin-top: 0;
+      margin-bottom: 16px;
+
+      .n-h1 {
+        font-size: 26px;
+      }
     }
   }
 }

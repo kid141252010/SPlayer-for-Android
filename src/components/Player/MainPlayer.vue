@@ -699,5 +699,71 @@ const showCreatorTip = () => window.$message.info("暂不支持查看主播主�
       }
     }
   }
+  
+  // 手机版适配（768px 以下）
+  @media (max-width: 768px) {
+    height: 76px;
+    padding: 0 12px;
+    
+    .play-data {
+      padding-left: 60px;
+      
+      .cover {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        border-radius: 6px;
+        
+        :deep(img) {
+          width: 48px;
+          height: 48px;
+        }
+      }
+      
+      .info {
+        .data {
+          .name {
+            font-size: 14px;
+          }
+          
+          .like,
+          .more {
+            margin-left: 6px;
+          }
+        }
+        
+        .lyric-container {
+          height: 20px;
+          
+          .lyric,
+          .artists {
+            font-size: 12px;
+          }
+        }
+      }
+    }
+    
+    .play-control {
+      .play-pause {
+        --n-width: 40px;
+        --n-height: 40px;
+      }
+      
+      .play-icon {
+        width: 34px;
+        height: 34px;
+        
+        .n-icon {
+          font-size: 22px;
+        }
+      }
+    }
+    
+    .play-menu {
+      .time {
+        font-size: 11px;
+      }
+    }
+  }
 }
 </style>

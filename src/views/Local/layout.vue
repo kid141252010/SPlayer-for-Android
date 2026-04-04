@@ -99,7 +99,7 @@
         <!-- Tab 切换 -->
         <template v-if="settingStore.useOnlineService">
           <n-dropdown
-            v-if="!isLargeDesktop"
+            v-if="isPhone"
             :options="tabDropdownOptions"
             :value="localType"
             trigger="click"
@@ -161,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { useMobile } from "@/composables/useMobile";
+import { useDevice } from "@/composables/useDevice";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { useLocalStore, useSettingStore } from "@/stores";
 import type { SongType } from "@/types/main";
@@ -175,7 +175,7 @@ const router = useRouter();
 const localStore = useLocalStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();
-const { isLargeDesktop } = useMobile();
+const { isPhone } = useDevice();
 
 const loading = ref<boolean>(false);
 const loadingMsg = ref<MessageReactive | null>(null);
@@ -625,6 +625,54 @@ onUnmounted(() => {
     flex: 1;
     overflow: hidden;
     max-height: calc((var(--layout-height) - 132) * 1px);
+  }
+  @media (max-width: 768px) {
+    .title {
+      margin-top: 8px;
+      margin-bottom: 16px;
+      height: auto;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .keyword {
+        font-size: 24px;
+      }
+
+      .status {
+        width: 100%;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+    }
+
+    .menu {
+      height: auto;
+      gap: 12px;
+
+      .left,
+      .right {
+        width: 100%;
+        flex-wrap: wrap;
+      }
+
+      .left {
+        justify-content: flex-start;
+      }
+
+      .right {
+        justify-content: flex-end;
+      }
+
+      .folder-select {
+        width: 100% !important;
+        max-width: 100%;
+      }
+    }
+
+    .router-view {
+      max-height: none;
+      min-height: 0;
+    }
   }
   @media (max-width: 512px) {
     .status {

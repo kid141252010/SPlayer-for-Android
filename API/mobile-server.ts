@@ -23,12 +23,15 @@ const toPathCase = (value: string) => {
 };
 
 const setCorsHeaders = (request: IncomingMessage, response: ServerResponse) => {
-  const origin = request.headers.origin;
-  response.setHeader("Access-Control-Allow-Origin", origin || "https://localhost");
+  // For Capacitor Android WebView, allow https://localhost with credentials
+  const origin = request.headers.origin || "https://localhost";
+  response.setHeader("Access-Control-Allow-Origin", origin);
   response.setHeader("Access-Control-Allow-Credentials", "true");
-  response.setHeader("Access-Control-Allow-Headers", "*");
+  response.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With, Accept, Origin",
+  );
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  response.setHeader("Vary", "Origin");
 };
 
 const sendJson = (

@@ -46,8 +46,18 @@
     </ListDetail>
     <!-- 歌曲列表 -->
     <template v-if="currentTab === 'songs'">
+      <div v-if="(!searchValue || searchData?.length) && isPhone" class="mobile-playlist-song-list">
+        <SongCard
+          v-for="(song, index) in detailData?.id === playlistId ? displayData : []"
+          :key="song.id"
+          :song="song"
+          :index="index"
+          hidden-size
+          @click.stop="playMobileSong(song)"
+        />
+      </div>
       <SongList
-        v-if="!searchValue || searchData?.length"
+        v-else-if="!searchValue || searchData?.length"
         :data="detailData?.id === playlistId ? displayData : []"
         :loading="loading"
         :height="songListHeight"
@@ -100,11 +110,16 @@ import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
 import { useListActions } from "@/composables/List/useListActions";
 import { useListDataCache, type ListCacheData } from "@/composables/List/useListDataCache";
+import { useDevice } from "@/composables/useDevice";
+import { usePlayerController } from "@/core/player/PlayerController";
+import SongCard from "@/components/Card/SongCard.vue";
 
 const router = useRouter();
 const dataStore = useDataStore();
 const localStore = useLocalStore();
 const statusStore = useStatusStore();
+const { isPhone } = useDevice();
+const player = usePlayerController();
 
 const {
   detailData,
@@ -460,6 +475,11 @@ const playAllSongs = useDebounceFn(() => {
   playAllSongsAction(displayData.value, playlistId.value);
 }, 300);
 
+const playMobileSong = (song: SongType) => {
+  if (!displayData.value?.length) return;
+  player.updatePlayList(displayData.value, song, playlistId.value);
+};
+
 // 加载提示
 const loadingMsgShow = (show: boolean = true, count?: number) => {
   if (show) {
@@ -619,3 +639,13 @@ onDeactivated(() => loadingMsgShow(false));
 onUnmounted(() => loadingMsgShow(false));
 onMounted(() => getPlaylistDetail(playlistId.value));
 </script>
+
+<style lang="scss" scoped>
+.mobile-playlist-song-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 236px;
+  padding-bottom: 12px;
+}
+</style>

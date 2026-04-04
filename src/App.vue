@@ -9,10 +9,12 @@
 <script setup lang="ts">
 import { useDevice } from "@/composables/useDevice";
 import { useImmersive } from "@/composables/useImmersive";
+import { useAndroidBack } from "@/composables/useAndroidBack";
 
 const { shellMode } = useDevice();
 
 useImmersive();
+useAndroidBack();
 </script>
 
 <style scoped>

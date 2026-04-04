@@ -3,7 +3,7 @@
     <!-- 页面导航 -->
     <n-flex class="page-control">
       <Logo v-if="isPhone" :size="40" @click="router.push('/')" />
-      <template v-if="!isSmallScreen">
+      <template v-if="!isLandscape && !isPhone">
         <n-button :focusable="false" tertiary circle @click="router.go(-1)">
           <template #icon>
             <SvgIcon name="NavigateBefore" :size="26" />
@@ -67,7 +67,7 @@
     </n-flex>
     <!-- 客户端控制 -->
     <n-flex
-      v-if="isElectron && !isSmallScreen && useBorderless"
+      v-if="isElectron && !isPhone && !isLandscape"
       align="center"
       class="client-control"
     >
@@ -143,13 +143,11 @@ import { useDevice } from "@/composables/useDevice";
 import { renderIcon } from "@/utils/helper";
 import { openSetting, openThemeConfig, openScalingModal, openUpdateApp } from "@/utils/modal";
 import { isDev, isElectron } from "@/utils/env";
-import { useMobile } from "@/composables/useMobile";
 
 const router = useRouter();
 const settingStore = useSettingStore();
 const statusStore = useStatusStore();
-const { isPad, isPhone } = useDevice();
-const { isSmallScreen } = useMobile();
+const { isPad, isPhone, isLandscape } = useDevice();
 
 // 更新按钮提示
 const updateBtnTitle = computed(() => {
@@ -289,9 +287,9 @@ onMounted(async () => {
   if (isElectron) {
     // 获取无边框窗口配置
     const windowConfig = await window.api.store.get("window");
-    useBorderless.value = windowConfig?.useBorderless ?? true;
+    useBorderless.value = Boolean(windowConfig?.useBorderless ?? true);
     // 获取窗口状态
-    isMax.value = window.electron.ipcRenderer.sendSync("win-state");
+    isMax.value = Boolean(window.electron.ipcRenderer.sendSync("win-state"));
     window.electron.ipcRenderer.on("win-state-change", (_event, value: boolean) => {
       isMax.value = value;
     });
@@ -308,11 +306,13 @@ onMounted(async () => {
   padding: calc(10px + var(--safe-area-top)) 1rem 10px;
   background-color: transparent;
   -webkit-app-region: drag;
+  
   .n-button {
     width: 40px;
     height: 40px;
     -webkit-app-region: no-drag;
   }
+  
   .nav-main {
     position: relative;
     flex: 1;
@@ -355,6 +355,22 @@ onMounted(async () => {
     }
     .min-expanded-area {
       right: 100px;
+    }
+  }
+  
+  // 手机版适配
+  @media (max-width: 768px) {
+    padding: calc(8px + var(--safe-area-top)) 12px 8px;
+    
+    .page-control {
+      .n-button {
+        width: 36px;
+        height: 36px;
+        
+        .n-icon {
+          font-size: 22px;
+        }
+      }
     }
   }
 }

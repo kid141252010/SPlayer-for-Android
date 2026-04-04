@@ -16,8 +16,18 @@
       @play-all="playAllSongs"
     />
     <Transition name="fade" mode="out-in">
+      <div v-if="(!searchValue || searchData?.length) && isPhone" class="mobile-liked-song-list">
+        <SongCard
+          v-for="(song, index) in displayData"
+          :key="song.id"
+          :song="song"
+          :index="index"
+          hidden-size
+          @click.stop="playMobileSong(song)"
+        />
+      </div>
       <SongList
-        v-if="!searchValue || searchData?.length"
+        v-else-if="!searchValue || searchData?.length"
         :data="displayData"
         :loading="loading"
         :height="songListHeight"
@@ -57,9 +67,14 @@ import { useListDetail } from "@/composables/List/useListDetail";
 import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
 import { useListActions } from "@/composables/List/useListActions";
+import { useDevice } from "@/composables/useDevice";
+import { usePlayerController } from "@/core/player/PlayerController";
+import SongCard from "@/components/Card/SongCard.vue";
 
 const dataStore = useDataStore();
 const statusStore = useStatusStore();
+const { isPhone } = useDevice();
+const player = usePlayerController();
 
 // 是否激活
 const isActivated = ref<boolean>(false);
@@ -194,6 +209,12 @@ const loadPlaylistData = async (id: number, forceRefresh: boolean = false) => {
     // 获取全部 ID 顺序
     const serverIds: number[] = detail.privileges?.map((p: any) => p.id) || [];
     const trackCount = detail.playlist?.trackCount || 0;
+    console.log("[liked] playlist detail", {
+      id,
+      trackCount,
+      privilegesCount: serverIds.length,
+      cachedCount: listData.value.length,
+    });
 
     // 如果 privileges 数量少于 trackCount，说明数据不完整，需要全量获取
     if (serverIds.length < trackCount && trackCount > 0) {
@@ -336,6 +357,11 @@ const playAllSongs = useDebounceFn(() => {
   playAllSongsAction(displayData.value, playlistId.value);
 }, 300);
 
+const playMobileSong = (song: SongType) => {
+  if (!displayData.value?.length) return;
+  player.updatePlayList(displayData.value, song, playlistId.value);
+};
+
 // 删除指定索引歌曲
 const removeSong = (ids: number[]) => {
   if (!listData.value) return;
@@ -412,3 +438,13 @@ onMounted(async () => {
   }
 });
 </script>
+
+<style lang="scss" scoped>
+.mobile-liked-song-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 236px;
+  padding-bottom: 12px;
+}
+</style>

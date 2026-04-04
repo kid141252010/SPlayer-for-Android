@@ -3,11 +3,6 @@ import { useWindowSize } from "@vueuse/core";
 
 export const ANDROID_PAD_BREAKPOINT = 768;
 
-/**
- * Android device layout strategy:
- * - >= 768px: pad layout
- * - < 768px: phone layout
- */
 export const useDevice = () => {
   const { width, height } = useWindowSize();
 
@@ -15,6 +10,8 @@ export const useDevice = () => {
   const isLandscape = computed(() => width.value > height.value);
   const isPad = computed(() => shortestSide.value >= ANDROID_PAD_BREAKPOINT);
   const isPhone = computed(() => shortestSide.value < ANDROID_PAD_BREAKPOINT);
+  const isPhonePortrait = computed(() => isPhone.value && !isLandscape.value);
+  const isPhoneLandscape = computed(() => isPhone.value && isLandscape.value);
   const shellMode = computed(() => (isPad.value ? "pad" : "phone"));
 
   return {
@@ -24,6 +21,8 @@ export const useDevice = () => {
     isLandscape,
     isPad,
     isPhone,
+    isPhonePortrait,
+    isPhoneLandscape,
     shellMode,
     breakpoint: ANDROID_PAD_BREAKPOINT,
   };

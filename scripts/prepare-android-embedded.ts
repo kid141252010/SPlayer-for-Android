@@ -73,7 +73,11 @@ const syncDirectoryContents = async (sourceRoot: string, targetRoot: string) => 
     const sourcePath = path.join(sourceRoot, entry.name);
     const targetPath = path.join(targetRoot, entry.name);
     await rm(targetPath, { recursive: true, force: true });
-    await cp(sourcePath, targetPath, { recursive: true });
+    await cp(sourcePath, targetPath, {
+      recursive: true,
+      dereference: false,
+      verbatimSymlinks: true,
+    });
   }
 };
 
@@ -94,15 +98,27 @@ const syncEmbeddedNodeAssets = async () => {
   await syncDirectoryContents(embeddedVendorNodeModulesRoot, appAssetVendorNodeModulesRoot);
 
   await rm(appPluginAssetsRoot, { recursive: true, force: true });
-  await cp(pluginAssetsRoot, appPluginAssetsRoot, { recursive: true });
+  await cp(pluginAssetsRoot, appPluginAssetsRoot, {
+    recursive: true,
+    dereference: false,
+    verbatimSymlinks: true,
+  });
 };
 
 for (const targetRoot of targetRoots) {
   await mkdir(path.dirname(targetRoot), { recursive: true });
   await rm(targetRoot, { recursive: true, force: true });
-  await cp(generatedBridgeRoot, targetRoot, { recursive: true });
+  await cp(generatedBridgeRoot, targetRoot, {
+    recursive: true,
+    dereference: false,
+    verbatimSymlinks: true,
+  });
   await rm(path.join(targetRoot, "libnode"), { recursive: true, force: true });
-  await cp(pluginLibnodeRoot, path.join(targetRoot, "libnode"), { recursive: true });
+  await cp(pluginLibnodeRoot, path.join(targetRoot, "libnode"), {
+    recursive: true,
+    dereference: false,
+    verbatimSymlinks: true,
+  });
   await inflateLibnodeBinaries(targetRoot);
 }
 

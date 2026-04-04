@@ -131,7 +131,7 @@
 import type { MenuOption, NScrollbar, SelectOption } from "naive-ui";
 import { SettingItem, SettingGroup } from "@/types/settings";
 import type { SettingType } from "@/types/main";
-import { useMobile } from "@/composables/useMobile";
+import { useDevice } from "@/composables/useDevice";
 import { renderIcon } from "@/utils/helper";
 import { isElectron } from "@/utils/env";
 import { useStatusStore } from "@/stores";
@@ -181,7 +181,7 @@ const allSettingGroups = computed(() => {
 
 const statusStore = useStatusStore();
 const displayVersion = getDisplayVersion();
-const { isSmallScreen } = useMobile();
+const { isPhone } = useDevice();
 
 // 设置内容
 const setScrollbar = ref<InstanceType<typeof NScrollbar> | null>(null);
@@ -189,9 +189,9 @@ const setScrollbar = ref<InstanceType<typeof NScrollbar> | null>(null);
 // 移动端菜单显示状态
 const showLeftMenu = ref(true);
 
-// 监听屏幕大小变化，非小屏时自动显示侧边栏
-watch(isSmallScreen, (small) => {
-  if (!small) {
+// 监听屏幕大小变化，非手机时自动显示侧边栏
+watch(isPhone, (phone) => {
+  if (!phone) {
     showLeftMenu.value = true;
   }
 });
@@ -201,7 +201,7 @@ const activeKey = ref<SettingType>(props.type);
 
 // 菜单选择处理
 const onMenuSelect = () => {
-  if (isSmallScreen.value) {
+  if (isPhone.value) {
     showLeftMenu.value = false;
   }
 };
@@ -277,7 +277,7 @@ const handleSearch = (value: string | number) => {
     activeKey.value = targetTab as SettingType;
   }
   // 移动端收起菜单
-  if (isSmallScreen.value) {
+  if (isPhone.value) {
     showLeftMenu.value = false;
   }
   nextTick(() => {

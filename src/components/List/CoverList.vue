@@ -254,13 +254,22 @@ const getListData = async (id: number | string): Promise<SongType[]> => {
 .cover-list {
   width: 100%;
   padding: 20px 4px;
+  
   .cover-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 20px;
-    @media (max-width: 600px) {
+    
+    // 手机版适配（768px 以下）
+    @media (max-width: 768px) {
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
+    }
+    
+    // 小屏手机（512px 以下）
+    @media (max-width: 512px) {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
     }
   }
   .cover-item {
@@ -272,6 +281,12 @@ const getListData = async (id: number | string): Promise<SongType[]> => {
       background-color 0.3s,
       transform 0.3s;
     cursor: pointer;
+    
+    // 手机版适配
+    @media (max-width: 768px) {
+      border-radius: 12px;
+    }
+    
     .cover {
       position: relative;
       display: flex;
@@ -285,6 +300,12 @@ const getListData = async (id: number | string): Promise<SongType[]> => {
       transition:
         border-radius 0.3s,
         box-shadow 0.3s;
+      
+      // 手机版适配
+      @media (max-width: 768px) {
+        border-radius: 12px;
+      }
+      
       :deep(img) {
         width: 100%;
         height: 100%;
@@ -448,6 +469,10 @@ const getListData = async (id: number | string): Promise<SongType[]> => {
   &.video {
     .cover-grid {
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      @media (max-width: 600px) {
+        // 网页端手机 UI：视频列表在手机上保持合理布局
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
     .cover-item {
       .cover {

@@ -3,19 +3,17 @@
     <div class="title">
       <n-text class="keyword">发现音乐</n-text>
     </div>
-    <!-- 标签页 -->
     <n-tabs
       v-model:value="discoverType"
       class="tabs"
-      type="segment"
+      :type="isPhone ? 'line' : 'segment'"
       @update:value="(name: string) => router.push({ name })"
     >
-      <n-tab name="discover-playlists"> 歌单广场 </n-tab>
-      <n-tab name="discover-toplists"> 排行榜 </n-tab>
-      <n-tab name="discover-artists"> 歌手 </n-tab>
-      <n-tab name="discover-new"> 最新音乐 </n-tab>
+      <n-tab name="discover-playlists">歌单广场</n-tab>
+      <n-tab name="discover-toplists">排行榜</n-tab>
+      <n-tab name="discover-artists">歌手</n-tab>
+      <n-tab name="discover-new">最新音乐</n-tab>
     </n-tabs>
-    <!-- 路由 -->
     <RouterView v-slot="{ Component }">
       <Transition :name="`router-${settingStore.routeAnimation}`" mode="out-in">
         <KeepAlive v-if="settingStore.useKeepAlive">
@@ -28,20 +26,22 @@
 </template>
 
 <script setup lang="ts">
+import { useDevice } from "@/composables/useDevice";
 import { useSettingStore } from "@/stores";
+
 const router = useRouter();
 const settingStore = useSettingStore();
+const { isPhone } = useDevice();
 
-// 发现路由
-const discoverType = ref<string>(
-  (router.currentRoute.value?.name as string) || "discover-playlists",
-);
+const discoverType = ref<string>((router.currentRoute.value?.name as string) || "discover-playlists");
 </script>
 
 <style lang="scss" scoped>
 .discover {
   display: flex;
   flex-direction: column;
+  padding-bottom: 20px;
+
   .title {
     display: flex;
     align-items: flex-end;
@@ -49,11 +49,24 @@ const discoverType = ref<string>(
     margin-top: 12px;
     margin-bottom: 20px;
     height: 40px;
+
     .keyword {
       font-size: 30px;
       font-weight: bold;
       margin-right: 12px;
       line-height: normal;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .title {
+      margin-top: 8px;
+      margin-bottom: 12px;
+      height: auto;
+
+      .keyword {
+        font-size: 24px;
+      }
     }
   }
 }

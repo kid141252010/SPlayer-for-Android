@@ -1,10 +1,8 @@
 <template>
   <div class="home-online">
-    <!-- 登录功能 -->
     <div v-if="isLogin()" class="main-rec">
       <div class="main-rec-grid">
         <n-flex :size="20" class="rec-list" justify="space-between" vertical>
-          <!-- 每日推荐 -->
           <SongListCard
             :data="musicStore.dailySongsData.list"
             :title="dailySongsTitle"
@@ -14,7 +12,6 @@
             :hiddenCover="settingStore.hiddenCovers.home"
             @click="router.push({ name: 'daily-songs' })"
           />
-          <!-- 我喜欢的音乐 -->
           <SongListCard
             :data="dataStore.likeSongsList.data"
             :height="90"
@@ -25,11 +22,10 @@
             @click="router.push({ name: 'like-songs' })"
           />
         </n-flex>
-        <!-- 私人FM -->
         <PersonalFM />
       </div>
     </div>
-    <!-- 公共推荐 -->
+
     <div v-for="(item, index) in sortedRecData" :key="index" class="rec-public">
       <n-flex
         class="title"
@@ -42,7 +38,7 @@
           <SvgIcon v-if="item.path" :size="26" name="Right" />
         </n-h3>
       </n-flex>
-      <!-- 列表 -->
+
       <ArtistList
         v-if="item.type === 'artist'"
         :data="item.list"
@@ -102,7 +98,6 @@ const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();
 
-// 日推标题
 const dailySongsTitle = computed(() => {
   if (settingStore.hiddenCovers.home) return "每日推荐";
   const day = new Date().getDate();
@@ -115,7 +110,6 @@ const dailySongsTitle = computed(() => {
   ]);
 });
 
-// 推荐数据
 const recData = ref<RecDataType>({
   playlist: {
     name: isLogin() ? "专属歌单" : "推荐歌单",
@@ -152,26 +146,18 @@ const recData = ref<RecDataType>({
   },
 });
 
-// 根据设置过滤和排序推荐数据
 const sortedRecData = computed(() => {
-  const sections = settingStore.homePageSections
+  return settingStore.homePageSections
     .filter((section) => section.visible)
     .sort((a, b) => a.order - b.order)
-    .map((section) => {
-      const key = section.key as keyof RecDataType;
-      return recData.value[key];
-    })
-    .filter((item) => item);
-  return sections;
+    .map((section) => recData.value[section.key as keyof RecDataType])
+    .filter(Boolean);
 });
 
-// 获取全部推荐
 const getAllRecData = async () => {
   try {
-    // 延时
     await sleep(300);
 
-    // 歌单
     try {
       const playlistRes = await getCacheData(
         personalized,
@@ -186,7 +172,6 @@ const getAllRecData = async () => {
       console.error("Error getting playlist:", error);
     }
 
-    // 雷达
     try {
       const radarRes = await getCacheData(radarPlaylist, { key: "radarRec", time: 30 });
       recData.value.radar.list = formatCoverList(radarRes);
@@ -194,7 +179,6 @@ const getAllRecData = async () => {
       console.error("Error getting radar:", error);
     }
 
-    // 歌手
     try {
       const artistRes = await getCacheData(topArtists, { key: "artistRec", time: 10 }, 6);
       recData.value.artist.list = formatArtistsList(artistRes.artists);
@@ -202,7 +186,6 @@ const getAllRecData = async () => {
       console.error("Error getting artist:", error);
     }
 
-    // MV
     try {
       const videoRes = await getCacheData(allMv, { key: "videoRec", time: 10 });
       recData.value.video.list = formatCoverList(videoRes.data);
@@ -210,7 +193,6 @@ const getAllRecData = async () => {
       console.error("Error getting video:", error);
     }
 
-    // 播客
     try {
       const radioRes = await getCacheData(radioRecommend, { key: "radioRec", time: 10 });
       recData.value.radio.list = formatCoverList(radioRes.djRadios);
@@ -218,7 +200,6 @@ const getAllRecData = async () => {
       console.error("Error getting radio:", error);
     }
 
-    // 新碟
     try {
       const albumRes = await getCacheData(newAlbumsAll, { key: "albumRec", time: 10 });
       recData.value.album.list = formatCoverList(albumRes.albums);
@@ -245,16 +226,19 @@ onMounted(() => {
     grid-template-columns: repeat(2, 1fr);
     gap: 20px;
   }
+
   .date {
     display: flex;
     align-items: center;
     margin-bottom: 4px;
+
     .date-icon {
       position: relative;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-right: 4px;
+
       .n-text {
         position: absolute;
         font-size: 12px;
@@ -264,30 +248,38 @@ onMounted(() => {
         transform: scale(0.8);
       }
     }
+
     .name {
       font-size: 18px;
       font-weight: bold;
     }
   }
+
   @media (max-width: 768px) {
     .main-rec-grid {
       grid-template-columns: repeat(1, 1fr);
+      gap: 12px;
     }
+
     .rec-list {
       display: grid !important;
       grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
     }
   }
 }
+
 .title {
   margin-top: 28px;
   padding: 0 4px;
   width: max-content;
+
   .n-h {
     margin: 0;
     display: flex;
     align-items: center;
     cursor: pointer;
+
     .n-icon {
       opacity: 0;
       transform: translateX(4px);
@@ -295,12 +287,18 @@ onMounted(() => {
         opacity 0.3s,
         transform 0.3s;
     }
+
     &:hover {
       .n-icon {
         opacity: 1;
         transform: translateX(0);
       }
     }
+  }
+
+  @media (max-width: 768px) {
+    margin-top: 20px;
+    padding: 0;
   }
 }
 </style>

@@ -93,13 +93,26 @@ const settingStore = useSettingStore();
 .artist-list {
   width: 100%;
   padding: 20px 4px;
+  
+  // 手机版适配
+  @media (max-width: 768px) {
+    padding: 12px 4px;
+  }
+  
   .artist-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
     gap: 20px;
-    @media (max-width: 600px) {
+    
+    // 手机版适配（768px 以下）
+    @media (max-width: 768px) {
       grid-template-columns: repeat(2, 1fr);
       gap: 12px;
+    }
+    
+    // 小屏手机（512px 以下）
+    @media (max-width: 512px) {
+      gap: 8px;
     }
   }
   .artist-item {

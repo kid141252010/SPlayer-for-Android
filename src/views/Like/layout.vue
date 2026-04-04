@@ -18,7 +18,7 @@
     <n-tabs
       v-if="dataStore.loginType !== 'uid'"
       v-model:value="likeType"
-      :type="isSmall ? 'line' : 'segment'"
+      :type="isPhone ? 'line' : 'segment'"
       class="tabs"
       justify-content="space-evenly"
       @update:value="(name: string) => router.push({ name })"
@@ -42,14 +42,14 @@
 </template>
 
 <script setup lang="ts">
-import { useMobile } from "@/composables/useMobile";
+import { useDevice } from "@/composables/useDevice";
 import { useDataStore, useSettingStore } from "@/stores";
 
 const router = useRouter();
 const dataStore = useDataStore();
 const settingStore = useSettingStore();
 
-const { isSmall } = useMobile();
+const { isPhone } = useDevice();
 
 const likeType = ref<string>((router.currentRoute.value?.name as string) || "like-playlists");
 
@@ -97,6 +97,8 @@ watch(
 .like {
   display: flex;
   flex-direction: column;
+  padding-bottom: 20px;
+  
   .title {
     display: flex;
     align-items: flex-end;
@@ -104,27 +106,55 @@ watch(
     margin-top: 12px;
     margin-bottom: 20px;
     height: 40px;
+    
     .keyword {
       font-size: 30px;
       font-weight: bold;
       margin-right: 12px;
       line-height: normal;
     }
+    
     .status {
       font-size: 15px;
       font-weight: normal;
       line-height: 30px;
+      
       .item {
         display: flex;
         align-items: center;
         opacity: 0.9;
         cursor: pointer;
+        
         .n-icon {
           margin-right: 4px;
         }
       }
     }
   }
+  
+  // 手机版适配
+  @media (max-width: 768px) {
+    padding: 0 0 20px;
+
+    .title {
+      margin-top: 8px;
+      margin-bottom: 12px;
+      height: auto;
+
+      .keyword {
+        font-size: 24px;
+      }
+      
+      .status {
+        font-size: 13px;
+      }
+    }
+
+    .tabs {
+      margin-bottom: 8px;
+    }
+  }
+  
   // 512px
   @media (max-width: 512px) {
     .status {

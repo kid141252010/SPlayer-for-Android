@@ -101,8 +101,8 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
-const { isLandscape, isPhone } = useDevice();
-const useCompactMobilePlayer = computed(() => isPhone.value && !isLandscape.value);
+const { isPhonePortrait } = useDevice();
+const useCompactMobilePlayer = computed(() => isPhonePortrait.value);
 
 /** 封面主颜色 */
 const mainCoverColor = useCssVar("--main-cover-color", document.documentElement);
@@ -126,7 +126,7 @@ const showComment = computed<boolean>(
     statusStore.showPlayerComment &&
     !musicStore.playSong.path &&
     !statusStore.pureLyricMode &&
-    !isPhone.value,
+    !isPhonePortrait.value,
 );
 
 /** 评论显示模式 */
