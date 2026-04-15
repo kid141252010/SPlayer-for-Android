@@ -11,7 +11,7 @@ import "@/style/main.scss";
 import "@/style/animate.scss";
 import "github-markdown-css/github-markdown.css";
 import { isCapacitorAndroid, isElectron } from "./utils/env";
-import { waitForEmbeddedApiReady } from "./utils/embeddedApi";
+import { waitForEmbeddedApiReady, startHealthCheck } from "./utils/embeddedApi";
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -53,9 +53,13 @@ app.config.errorHandler = (err, _instance, info) => {
 app.mount("#app");
 
 if (isCapacitorAndroid) {
-  void waitForEmbeddedApiReady().catch((error) => {
-    console.error("Failed to warm up embedded API:", error);
-  });
+  void waitForEmbeddedApiReady()
+    .then(() => {
+      startHealthCheck();
+    })
+    .catch((error) => {
+      console.error("Failed to warm up embedded API:", error);
+    });
 }
 
 if (!location.hash.includes("desktop-lyric")) {

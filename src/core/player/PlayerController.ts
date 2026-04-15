@@ -6,14 +6,20 @@ import type { RepeatModeType, ShuffleModeType } from "@/types/shared/play-mode";
 import { type AudioAnalysis } from "@/types/audio/automix";
 import { calculateLyricIndex } from "@/utils/calc";
 import { getCoverColor } from "@/utils/color";
-import { isElectron, isMac } from "@/utils/env";
+import { EMBEDDED_API_BASE_URL } from "@/utils/embeddedApi";
+import { isCapacitorAndroid, isElectron, isMac } from "@/utils/env";
 import { getPlayerInfoObj, getPlaySongData } from "@/utils/format";
 import { handleSongQuality, shuffleArray, sleep } from "@/utils/helper";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
 import { DJ_MODE_KEYWORDS } from "@/utils/meta";
 import { calculateProgress } from "@/utils/time";
+import { getCookie } from "@/utils/cookie";
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { type DebouncedFunc, throttle } from "lodash-es";
+import {
+  AndroidNativePlayback,
+  type AndroidNativeMetadataPayload,
+} from "@/plugins/androidNativePlayback";
 import { useBlobURLManager } from "../resource/BlobURLManager";
 import { useAudioManager } from "./AudioManager";
 import { useAutomixManager } from "@/core/automix/AutomixManager";
@@ -59,6 +65,10 @@ class PlayerController {
   private rateResetTimer: ReturnType<typeof setTimeout> | undefined;
   /** 速率渐变动画帧 */
   private rateRampFrame: number | undefined;
+  /** Seek 防护：上次 seek 时间戳 */
+  private lastSeekTimestamp = 0;
+  /** Seek 防护：上次 seek 目标位置 (ms) */
+  private lastSeekTargetMs = 0;
 
   constructor() {
     // 初始化 AudioManager（会根据设置自动选择引擎）
@@ -234,6 +244,8 @@ class PlayerController {
         });
       }
     }
+    // 同步 Android 悬浮歌词歌曲信息
+    this.syncFloatingLyricSongInfo();
     // 获取歌词
     lyricManager.handleLyric(song);
   }
@@ -590,6 +602,7 @@ class PlayerController {
     }
 
     // 预载下一首
+    await this.syncAndroidPlaybackContext(song);
     if (settingStore.useNextPrefetch) songManager.prefetchNextSong();
 
     // Last.fm Scrobbler
@@ -604,6 +617,201 @@ class PlayerController {
    * 解析本地歌曲元信息
    * @param path 歌曲路径
    */
+  public applySongLikeState(songId: number, liked: boolean) {
+    const dataStore = useDataStore();
+    const musicStore = useMusicStore();
+    const likeList = [...dataStore.userLikeData.songs];
+    const existingIndex = likeList.indexOf(songId);
+
+    if (liked && existingIndex === -1) {
+      likeList.push(songId);
+    } else if (!liked && existingIndex !== -1) {
+      likeList.splice(existingIndex, 1);
+    }
+
+    void dataStore.setUserLikeData("songs", likeList);
+
+    if (isElectron && musicStore.playSong?.id === songId) {
+      playerIpc.sendLikeStatus(liked);
+    }
+
+    if (musicStore.playSong?.id === songId) {
+      void this.syncAndroidPlaybackContext();
+    }
+  }
+
+  private buildAndroidTrackMetadata(song: SongType): AndroidNativeMetadataPayload & { liked?: boolean } {
+    const dataStore = useDataStore();
+    const info = getPlayerInfoObj(song) || { name: song.name, artist: "", album: "" };
+
+    return {
+      songId: typeof song.id === "number" ? song.id : undefined,
+      title: info.name || song.name,
+      artist: info.artist || "",
+      album: info.album || "",
+      coverUrl: song.cover || "",
+      durationMs: song.duration || 0,
+      canLike: !song.path && song.type !== "streaming",
+      liked: typeof song.id === "number" ? dataStore.isLikeSong(song.id) : false,
+    };
+  }
+
+  private resolveAndroidNextSong(currentSong: SongType): SongType | null {
+    const dataStore = useDataStore();
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+
+    if (statusStore.repeatMode === "one") {
+      return currentSong;
+    }
+
+    if (statusStore.personalFmMode) {
+      const fmList = musicStore.personalFM.list;
+      const nextSong = fmList[musicStore.personalFM.playIndex + 1];
+      return nextSong && !this.shouldSkipSong(nextSong) ? nextSong : null;
+    }
+
+    const playList = dataStore.playList;
+    const playListLength = playList.length;
+    if (playListLength === 0) {
+      return null;
+    }
+
+    let nextIndex = statusStore.playIndex;
+    let attempts = 0;
+    while (attempts < playListLength) {
+      nextIndex += 1;
+      if (nextIndex >= playListLength) nextIndex = 0;
+      const nextSong = playList[nextIndex];
+      if (nextSong && !this.shouldSkipSong(nextSong)) {
+        return nextSong;
+      }
+      attempts++;
+    }
+
+    return null;
+  }
+
+  private async buildAndroidQueuedNextTrack(currentSong: SongType) {
+    const statusStore = useStatusStore();
+    if (statusStore.repeatMode === "one") {
+      return undefined;
+    }
+
+    const nextSong = this.resolveAndroidNextSong(currentSong);
+    if (!nextSong) {
+      return undefined;
+    }
+
+    let nextUrl = "";
+    if (nextSong.path) {
+      nextUrl = nextSong.path;
+    } else if (nextSong.type === "streaming" && nextSong.streamUrl) {
+      nextUrl = nextSong.streamUrl;
+    } else if (typeof nextSong.id === "number") {
+      const songManager = useSongManager();
+      const prefetched = songManager.peekPrefetch(nextSong.id) ?? (await songManager.prefetchNextSong());
+      if (prefetched?.id === nextSong.id && prefetched.url) {
+        nextUrl = prefetched.url;
+      }
+    }
+
+    if (!nextUrl) {
+      return undefined;
+    }
+
+    return {
+      ...this.buildAndroidTrackMetadata(nextSong),
+      url: nextUrl,
+    };
+  }
+
+  public async syncAndroidPlaybackContext(songOverride?: SongType) {
+    if (!isCapacitorAndroid) return;
+
+    const dataStore = useDataStore();
+    const musicStore = useMusicStore();
+    const settingStore = useSettingStore();
+    const statusStore = useStatusStore();
+    const song = songOverride || getPlaySongData() || musicStore.playSong;
+
+    if (!song) return;
+
+    const musicCookie = getCookie("MUSIC_U");
+
+    await AndroidNativePlayback.syncApiContext({
+      apiBaseUrl: EMBEDDED_API_BASE_URL,
+      cookie: musicCookie ? `MUSIC_U=${musicCookie};os=pc;` : "",
+    });
+
+    let nextTrack:
+      | (AndroidNativeMetadataPayload & {
+          liked?: boolean;
+          url?: string;
+        })
+      | undefined;
+
+    try {
+      nextTrack = await this.buildAndroidQueuedNextTrack(song);
+    } catch (error) {
+      console.warn("[Android] failed to build next track context:", error);
+    }
+
+    await AndroidNativePlayback.updateQueueContext({
+      liked: typeof song.id === "number" ? dataStore.isLikeSong(song.id) : false,
+      canSkipPrevious: !statusStore.personalFmMode,
+      personalFmMode: statusStore.personalFmMode,
+      controllerEnabled: settingStore.androidMediaControllerEnabled,
+      desktopLyricButtonEnabled: settingStore.androidMediaControllerDesktopLyricEnabled,
+      desktopLyricEnabled: statusStore.showDesktopLyric,
+      repeatOne: statusStore.repeatMode === "one",
+      nextTrack,
+    });
+
+    await AndroidNativePlayback.updateNotificationPrefs({
+      controllerEnabled: settingStore.androidMediaControllerEnabled,
+      desktopLyricButtonEnabled: settingStore.androidMediaControllerDesktopLyricEnabled,
+    });
+  }
+
+  public async applyNativeAutoNext(songId: number, liked?: boolean) {
+    const dataStore = useDataStore();
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+
+    let nextSong: SongType | undefined;
+
+    if (statusStore.personalFmMode) {
+      const nextIndex = musicStore.personalFM.list.findIndex((song) => song.id === songId);
+      if (nextIndex !== -1) {
+        musicStore.personalFM.playIndex = nextIndex;
+        nextSong = musicStore.personalFM.list[nextIndex];
+      }
+    } else {
+      const nextIndex = dataStore.playList.findIndex((song) => song.id === songId);
+      if (nextIndex !== -1) {
+        statusStore.playIndex = nextIndex;
+        nextSong = dataStore.playList[nextIndex];
+      }
+    }
+
+    if (!nextSong) {
+      return;
+    }
+
+    if (typeof liked === "boolean") {
+      this.applySongLikeState(songId, liked);
+    }
+
+    this.setupSongUI(nextSong, 0);
+    statusStore.currentTime = 0;
+    statusStore.duration = nextSong.duration || 0;
+    statusStore.progress = 0;
+    statusStore.playLoading = false;
+    statusStore.playStatus = true;
+    await this.afterPlaySetup(nextSong);
+  }
+
   private async parseLocalMusicInfo(path: string) {
     try {
       const musicStore = useMusicStore();
@@ -618,16 +826,22 @@ class PlayerController {
       // 获取封面数据
       if (!oldCover || oldCover === "/images/song.jpg?asset") {
         console.log("获取封面数据");
-        const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", path);
-        if (coverData) {
-          const blobURL = blobURLManager.createBlobURL(coverData.data, coverData.format, path);
+        const coverData = (await window.electron.ipcRenderer.invoke("get-music-cover", path)) as {
+          data?: ArrayLike<number>;
+          format?: string;
+        } | null;
+        if (coverData?.data && coverData.format) {
+          const blobPayload = new Uint8Array(Array.from(coverData.data));
+          const blobURL = blobURLManager.createBlobURL(blobPayload, coverData.format, path);
           if (blobURL) musicStore.playSong.cover = blobURL;
         } else {
           musicStore.playSong.cover = "/images/song.jpg?asset";
         }
       }
       // 获取元数据
-      const infoData = await window.electron.ipcRenderer.invoke("get-music-metadata", path);
+      const infoData = (await window.electron.ipcRenderer.invoke("get-music-metadata", path)) as {
+        format?: { bitrate?: number };
+      };
       statusStore.songQuality = handleSongQuality(infoData.format?.bitrate ?? 0, "local");
       // 获取主色
       getCoverColor(musicStore.playSong.cover);
@@ -640,6 +854,7 @@ class PlayerController {
         artist: artist || "",
         cover: musicStore.playSong.cover || "",
       });
+      await this.syncAndroidPlaybackContext(musicStore.playSong);
     } catch (error) {
       console.error("❌ 解析本地歌曲元信息失败:", error);
     }
@@ -702,6 +917,15 @@ class PlayerController {
       playerIpc.sendTaskbarMode("normal");
       playerIpc.sendTaskbarProgress(statusStore.progress);
       console.log(`▶️ [${musicStore.playSong?.id}] 歌曲播放:`, name);
+      // 同步状态到 Android 通知栏
+      if (isCapacitorAndroid) {
+        void AndroidNativePlayback.syncRemoteState({
+          playing: true,
+          positionMs: statusStore.currentTime,
+          durationMs: statusStore.duration,
+        });
+        this.syncFloatingLyricProgress(statusStore.currentTime, true);
+      }
     });
     // 暂停
     audioManager.addEventListener("pause", () => {
@@ -716,6 +940,15 @@ class PlayerController {
       playerIpc.sendTaskbarProgress(statusStore.progress);
       lastfmScrobbler.pause();
       console.log(`⏸️ [${musicStore.playSong?.id}] 歌曲暂停`);
+      // 同步状态到 Android 通知栏
+      if (isCapacitorAndroid) {
+        void AndroidNativePlayback.syncRemoteState({
+          playing: false,
+          positionMs: statusStore.currentTime,
+          durationMs: statusStore.duration,
+        });
+        this.syncFloatingLyricProgress(statusStore.currentTime, false);
+      }
     });
     // 拖动进度条
     audioManager.addEventListener("seeking", () => {
@@ -744,6 +977,20 @@ class PlayerController {
       const rawTime = audioManager.currentTime;
       const currentTime = Math.floor(rawTime * 1000);
       const duration = Math.floor(audioManager.duration * 1000) || statusStore.duration;
+      // Seek 防护：seek 后 3 秒内，若原生上报的位置与目标偏差过大则丢弃
+      if (isCapacitorAndroid && this.lastSeekTimestamp > 0) {
+        const elapsed = Date.now() - this.lastSeekTimestamp;
+        if (elapsed < 3000) {
+          const drift = Math.abs(currentTime - this.lastSeekTargetMs);
+          // 允许与目标偏差不超过 3 秒的更新，其余视为过期数据
+          if (drift > 3000) {
+            return;
+          }
+        } else {
+          // 超过防护窗口，清除标记
+          this.lastSeekTimestamp = 0;
+        }
+      }
       useAutomixManager().updateAutomixMonitoring();
       // 计算歌词索引
       const songId = musicStore.playSong?.id;
@@ -775,6 +1022,8 @@ class PlayerController {
         songId: musicStore.playSong?.id,
         songOffset: statusStore.getSongOffset(musicStore.playSong?.id),
       });
+      // 更新 Android 悬浮歌词进度
+      this.syncFloatingLyricProgress(currentTime, statusStore.playStatus);
       // 任务栏进度
       if (settingStore.showTaskbarProgress) {
         playerIpc.sendTaskbarProgress(statusStore.progress);
@@ -1056,6 +1305,9 @@ class PlayerController {
     const statusStore = useStatusStore();
     const audioManager = useAudioManager();
     const safeTime = Math.max(0, Math.min(time, this.getDuration()));
+    // 记录 seek 防护信息，防止原生异步事件携带的旧位置覆盖进度
+    this.lastSeekTimestamp = Date.now();
+    this.lastSeekTargetMs = safeTime;
     audioManager.seek(safeTime / 1000);
     statusStore.currentTime = safeTime;
     mediaSessionManager.updateState(this.getDuration(), safeTime, true);
@@ -1526,12 +1778,94 @@ class PlayerController {
    * 桌面歌词控制
    * @param show 是否显示
    */
-  public setDesktopLyricShow(show: boolean) {
+  public async setDesktopLyricShow(show: boolean) {
     const statusStore = useStatusStore();
     if (statusStore.showDesktopLyric === show) return;
+
+    // Android 端使用悬浮歌词
+    if (isCapacitorAndroid) {
+      try {
+        if (show) {
+          // 检查悬浮窗权限
+          const { granted } = await AndroidNativePlayback.checkOverlayPermission();
+          if (!granted) {
+            await AndroidNativePlayback.requestOverlayPermission();
+            window.$message.info("请授予悬浮窗权限后重试");
+            return;
+          }
+          await AndroidNativePlayback.showFloatingLyric();
+          statusStore.showDesktopLyric = true;
+          // 立即推送数据到 PlaybackManager 缓冲区（服务就绪后自动回放）
+          this.syncFloatingLyricData();
+          this.syncFloatingLyricSongInfo();
+          this.syncFloatingLyricProgress(statusStore.currentTime, statusStore.playStatus);
+        } else {
+          await AndroidNativePlayback.hideFloatingLyric();
+          statusStore.showDesktopLyric = false;
+        }
+      } catch (e) {
+        console.error("悬浮歌词操作失败:", e);
+        const errMsg = String(e);
+        if (errMsg.includes("OVERLAY_PERMISSION_DENIED")) {
+          window.$message.warning("请先授予悬浮窗权限");
+          try {
+            await AndroidNativePlayback.requestOverlayPermission();
+          } catch {}
+          return;
+        }
+      }
+      void this.syncAndroidPlaybackContext();
+      window.$message.success(`${show ? "已开启" : "已关闭"}桌面歌词`);
+      return;
+    }
+
     statusStore.showDesktopLyric = show;
+    void this.syncAndroidPlaybackContext();
     playerIpc.toggleDesktopLyric(show);
     window.$message.success(`${show ? "已开启" : "已关闭"}桌面歌词`);
+  }
+
+  /**
+   * 同步歌词数据到 Android 悬浮歌词
+   */
+  public syncFloatingLyricData() {
+    if (!isCapacitorAndroid) return;
+    const statusStore = useStatusStore();
+    if (!statusStore.showDesktopLyric) return;
+    const musicStore = useMusicStore();
+    const lrcData = toRaw(musicStore.songLyric.lrcData ?? []);
+    const yrcData = toRaw(musicStore.songLyric.yrcData ?? []);
+    AndroidNativePlayback.updateFloatingLyricData({
+      lrcData: JSON.stringify(lrcData),
+      yrcData: JSON.stringify(yrcData),
+    }).catch(() => {});
+  }
+
+  /**
+   * 同步歌曲信息到 Android 悬浮歌词
+   */
+  public syncFloatingLyricSongInfo() {
+    if (!isCapacitorAndroid) return;
+    const statusStore = useStatusStore();
+    if (!statusStore.showDesktopLyric) return;
+    const info = getPlayerInfoObj();
+    AndroidNativePlayback.updateFloatingLyricSongInfo({
+      name: info?.name ?? "",
+      artist: info?.artist ?? "",
+    }).catch(() => {});
+  }
+
+  /**
+   * 同步播放进度到 Android 悬浮歌词
+   */
+  public syncFloatingLyricProgress(timeMs: number, playing: boolean) {
+    if (!isCapacitorAndroid) return;
+    const statusStore = useStatusStore();
+    if (!statusStore.showDesktopLyric) return;
+    AndroidNativePlayback.updateFloatingLyricProgress({
+      timeMs,
+      playing,
+    }).catch(() => {});
   }
 
   /** 切换任务栏歌词 */

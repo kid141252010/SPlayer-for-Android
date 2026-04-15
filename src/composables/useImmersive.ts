@@ -1,11 +1,12 @@
 import { onBeforeUnmount, onMounted } from "vue";
 import { Capacitor } from "@capacitor/core";
 import { StatusBar, Style } from "@capacitor/status-bar";
+import { useSettingStore } from "@/stores";
 
 /**
  * Android immersive mode:
  * - overlays the webview under the status bar
- * - hides the status bar after the app boots
+ * - hides the status bar after the app boots (unless user chose to show it)
  */
 export const useImmersive = () => {
   let reapplyTimer: number | undefined;
@@ -18,7 +19,12 @@ export const useImmersive = () => {
     try {
       await StatusBar.setStyle({ style: Style.Light });
       await StatusBar.setOverlaysWebView({ overlay: true });
-      await StatusBar.hide();
+      const settingStore = useSettingStore();
+      if (settingStore.androidShowStatusBar) {
+        await StatusBar.show();
+      } else {
+        await StatusBar.hide();
+      }
     } catch (error) {
       console.warn("[useImmersive] Failed to enter immersive mode", error);
     }

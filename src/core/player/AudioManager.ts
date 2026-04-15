@@ -1,6 +1,7 @@
 import { useSettingStore } from "@/stores";
-import { checkIsolationSupport, isElectron } from "@/utils/env";
+import { checkIsolationSupport, isCapacitorAndroid, isElectron } from "@/utils/env";
 import { TypedEventTarget } from "@/utils/TypedEventTarget";
+import { AndroidNativeAudioPlayer } from "../audio-player/AndroidNativeAudioPlayer";
 import { AudioElementPlayer } from "../audio-player/AudioElementPlayer";
 import { AUDIO_EVENTS, type AudioEventMap } from "../audio-player/BaseAudioPlayer";
 import { FFmpegAudioPlayer } from "../audio-player/ffmpeg-engine/FFmpegAudioPlayer";
@@ -34,7 +35,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
   private _masterVolume: number = 1.0;
 
   /** 当前引擎类型：element | ffmpeg | mpv */
-  public readonly engineType: "element" | "ffmpeg" | "mpv";
+  public readonly engineType: "element" | "ffmpeg" | "mpv" | "android-native";
 
   /** 引擎能力描述 */
   public readonly capabilities: EngineCapabilities;
@@ -43,7 +44,12 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     super();
 
     // 根据设置选择引擎
-    if (isElectron && playbackEngine === "mpv") {
+    // Android 使用 AudioElementPlayer（HTML5 Audio）— seek 可靠；
+    // 后台续播通过前台服务 (PlaybackService) 保活，通知栏通过 syncRemoteState 同步。
+    if (isCapacitorAndroid) {
+      this.engine = new AudioElementPlayer();
+      this.engineType = "element";
+    } else if (isElectron && playbackEngine === "mpv") {
       const mpvPlayer = useMpvPlayer();
       mpvPlayer.init();
       this.engine = mpvPlayer;
@@ -147,7 +153,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     },
   ): Promise<void> {
     // MPV 不支持 Web Audio API 级别的 Crossfade，回退到普通播放
-    if (this.engineType === "mpv") {
+    if (this.engineType === "mpv" || this.engineType === "android-native") {
       this.stop();
       if (options.onSwitch) options.onSwitch();
       await this.play(url, {

@@ -5,7 +5,7 @@ import { useSettingStore, useStatusStore } from "@/stores";
 import type { LyricConfig } from "@/types/desktop-lyric";
 import type { SettingConfig } from "@/types/settings";
 import { DEFAULT_TASKBAR_CONFIG, TASKBAR_IPC_CHANNELS, type TaskbarConfig } from "@/types/shared";
-import { isElectron, isWin, isMac } from "@/utils/env";
+import { isElectron, isWin, isMac, isCapacitorAndroid } from "@/utils/env";
 import { descMultiline } from "@/utils/format";
 import { openAMLLServer, openExcludeLyric, openFontManager } from "@/utils/modal";
 import { cloneDeep, isEqual } from "lodash-es";
@@ -604,13 +604,15 @@ export const useLyricSettings = (): SettingConfig => {
       {
         title: "桌面歌词",
         tags: [{ text: "Beta", type: "warning" }],
-        show: isElectron,
+        show: isElectron || isCapacitorAndroid,
         items: [
           {
             key: "showDesktopLyric",
             label: "开启桌面歌词",
             type: "switch",
-            description: "如遇问题请向开发者反馈",
+            description: isCapacitorAndroid
+              ? "在其他应用上方悬浮显示歌词，需要悬浮窗权限。点击悬浮窗可显示控制栏"
+              : "如遇问题请向开发者反馈",
             value: computed({
               get: () => statusStore.showDesktopLyric,
               set: (v) => player.setDesktopLyricShow(v),
@@ -621,6 +623,7 @@ export const useLyricSettings = (): SettingConfig => {
             label: "锁定桌面歌词位置",
             type: "switch",
             description: "是否锁定桌面歌词位置，防止误触或遮挡内容",
+            show: isElectron,
             value: computed({
               get: () => desktopLyricConfig.isLock,
               set: (v) => {

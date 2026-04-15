@@ -10,7 +10,17 @@ import { useSettingStore } from "@/stores";
 import { getCookie } from "./cookie";
 import { isLogin } from "./auth";
 import { isCapacitorAndroid, isCapacitorNative, isDev } from "./env";
-import { EMBEDDED_API_BASE_URL, waitForEmbeddedApiReady } from "./embeddedApi";
+import {
+  EMBEDDED_API_BASE_URL,
+  restartEmbeddedApi,
+  waitForEmbeddedApiReady,
+} from "./embeddedApi";
+
+declare module "axios" {
+  interface InternalAxiosRequestConfig {
+    _embeddedApiRetried?: boolean;
+  }
+}
 
 const DEV_PROXY_BASE_URL = "/api/netease";
 const ABSOLUTE_HTTP_URL_RE = /^https?:\/\//i;
@@ -145,7 +155,23 @@ server.interceptors.request.use(
 
 server.interceptors.response.use(
   (response: AxiosResponse) => response,
-  (error: AxiosError) => {
+  async (error: AxiosError) => {
+    if (
+      isCapacitorAndroid &&
+      error.config &&
+      !error.config._embeddedApiRetried &&
+      (error.code === "ECONNABORTED" ||
+        error.code === "ERR_NETWORK" ||
+        error.message.includes("Network Error") ||
+        error.message.includes("timeout"))
+    ) {
+      const restarted = await restartEmbeddedApi();
+      if (restarted) {
+        error.config._embeddedApiRetried = true;
+        return server.request(error.config);
+      }
+    }
+
     if (
       error.code === "ECONNABORTED" ||
       error.message.includes("timeout") ||

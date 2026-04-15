@@ -1,11 +1,12 @@
-import type { VNodeChild } from "vue";
+﻿import type { VNodeChild } from "vue";
 import { useSettingStore } from "@/stores";
 import { usePlayerController } from "@/core/player/PlayerController";
-import { isElectron, checkIsolationSupport } from "@/utils/env";
+import { isCapacitorAndroid, isElectron, checkIsolationSupport } from "@/utils/env";
 import { renderOption } from "@/utils/helper";
 import { SettingConfig } from "@/types/settings";
 import { AI_AUDIO_LEVELS } from "@/utils/meta";
 import { openSongUnlockManager } from "@/utils/modal";
+import { AndroidNativePlayback } from "@/plugins/androidNativePlayback";
 import { NTooltip, SelectOption } from "naive-ui";
 import { uniqBy } from "lodash-es";
 
@@ -14,6 +15,24 @@ import { computed, ref, h, watch } from "vue";
 export const usePlaySettings = (): SettingConfig => {
   const settingStore = useSettingStore();
   const player = usePlayerController();
+
+  const syncAndroidPlaybackContext = () => {
+    if (isCapacitorAndroid) {
+      void player.syncAndroidPlaybackContext();
+    }
+  };
+
+  const handleAndroidMediaControllerChange = async (enabled: boolean) => {
+    settingStore.androidMediaControllerEnabled = enabled;
+    if (enabled && isCapacitorAndroid) {
+      try {
+        await AndroidNativePlayback.requestNotificationPermission();
+      } catch (error) {
+        console.warn("[AndroidNativePlayback] notification permission request failed", error);
+      }
+    }
+    syncAndroidPlaybackContext();
+  };
 
   // 音频引擎数据
   const audioEngineData = {
@@ -361,6 +380,36 @@ export const usePlaySettings = (): SettingConfig => {
             }),
           },
           {
+            key: "androidMediaControllerEnabled",
+            label: "通知栏音乐控制器",
+            type: "switch",
+            show: isCapacitorAndroid,
+            description:
+              "使用 Android 原生后台播放控制，并在通知栏和系统媒体面板显示控制器。",
+            value: computed({
+              get: () => settingStore.androidMediaControllerEnabled,
+              set: (v) => {
+                void handleAndroidMediaControllerChange(v);
+              },
+            }),
+          },
+          {
+            key: "androidMediaControllerDesktopLyricEnabled",
+            label: "显示桌面歌词按钮",
+            type: "switch",
+            show: isCapacitorAndroid,
+            description:
+              "在通知栏显示桌面歌词开关按钮",
+            value: computed({
+              get: () => settingStore.androidMediaControllerDesktopLyricEnabled,
+              set: (v) => {
+                settingStore.androidMediaControllerDesktopLyricEnabled = v;
+                syncAndroidPlaybackContext();
+              },
+            }),
+            disabled: computed(() => !settingStore.androidMediaControllerEnabled),
+          },
+          {
             key: "preventSleep",
             label: "阻止系统息屏",
             type: "switch",
@@ -368,6 +417,26 @@ export const usePlaySettings = (): SettingConfig => {
             value: computed({
               get: () => settingStore.preventSleep,
               set: (v) => (settingStore.preventSleep = v),
+            }),
+          },
+          {
+            key: "androidShowStatusBar",
+            label: "显示系统状态栏",
+            type: "switch",
+            show: isCapacitorAndroid,
+            description: "显示 Android 系统状态栏，关闭后为沉浸式全屏",
+            value: computed({
+              get: () => settingStore.androidShowStatusBar,
+              set: (v) => {
+                settingStore.androidShowStatusBar = v;
+                import("@capacitor/status-bar").then(({ StatusBar }) => {
+                  if (v) {
+                    StatusBar.show();
+                  } else {
+                    StatusBar.hide();
+                  }
+                });
+              },
             }),
           },
           {
@@ -437,6 +506,10 @@ export const usePlaySettings = (): SettingConfig => {
             value: computed({
               get: () => settingStore.enableAutomix,
               set: (v) => {
+                if (v && isCapacitorAndroid) {
+                  window.$message.warning("Android 鍘熺敓鎾斁鏆備笉鏀寔鑷姩娣烽煶");
+                  return;
+                }
                 if (v) {
                   window.$dialog.warning({
                     title: "启用自动混音 (Beta)",
@@ -453,7 +526,7 @@ export const usePlaySettings = (): SettingConfig => {
                 }
               },
             }),
-            disabled: computed(() => settingStore.playbackEngine !== "web-audio"),
+            disabled: computed(() => isCapacitorAndroid || settingStore.playbackEngine !== "web-audio"),
             children: [
               {
                 key: "automixMaxAnalyzeTime",
@@ -543,6 +616,7 @@ export const usePlaySettings = (): SettingConfig => {
               get: () => audioEngineSelectValue.value,
               set: (v) => handleAudioEngineSelect(v),
             }),
+            show: !isCapacitorAndroid,
           },
           {
             key: "audioLatencyHint",
@@ -579,6 +653,7 @@ export const usePlaySettings = (): SettingConfig => {
             }),
             show: computed(
               () =>
+                !isCapacitorAndroid &&
                 settingStore.playbackEngine === "web-audio" &&
                 settingStore.audioEngine === "element",
             ),
@@ -590,7 +665,7 @@ export const usePlaySettings = (): SettingConfig => {
             description:
               "手动补偿音频与歌词进度延迟。<br>正值歌词变快，负值歌词进度变慢。<br>适用于移动端等自动延迟检测不准的设备。",
             tags: [{ text: "Beta", type: "warning" }],
-            show: computed(() => settingStore.audioLatencyHint === "playback"),
+            show: computed(() => !isCapacitorAndroid && settingStore.audioLatencyHint === "playback"),
             min: -1000,
             max: 1000,
             step: 10,
@@ -695,3 +770,4 @@ export const usePlaySettings = (): SettingConfig => {
     ],
   };
 };
+

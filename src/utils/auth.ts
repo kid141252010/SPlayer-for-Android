@@ -24,6 +24,7 @@ import { likeArtist } from "@/api/artist";
 import { likeAlbum } from "@/api/album";
 import { radioSub } from "@/api/radio";
 import router from "@/router";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 type BackgroundSyncTask = {
   name: string;
@@ -366,16 +367,14 @@ export const toLikeSong: DebouncedFunc<(song: SongType, like: boolean) => Promis
       const exists = likeList.includes(id);
       await likeSong(id, like);
       if (like && !exists) {
-        likeList.push(id);
         window.$message.success("已添加到我喜欢的音乐");
       } else if (!like && exists) {
-        likeList.splice(likeList.indexOf(id), 1);
         window.$message.success("已取消喜欢");
       } else if (like && exists) {
         window.$message.info("我喜欢的音乐中已存在该歌曲");
       }
       // 更新
-      dataStore.setUserLikeData("songs", likeList);
+      usePlayerController().applySongLikeState(id, like);
       // ipc
       if (isElectron) window.electron.ipcRenderer.send("like-status-change", like);
     } catch (error) {

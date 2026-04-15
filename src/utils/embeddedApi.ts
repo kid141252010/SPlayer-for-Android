@@ -12,6 +12,8 @@ let nodeRuntimeStartPromise: Promise<void> | null = null;
 let embeddedApiReadyPromise: Promise<void> | null = null;
 let nodeRuntimeStarted = false;
 let embeddedApiErrorShown = false;
+let healthCheckTimer: ReturnType<typeof setInterval> | null = null;
+let restartInProgress: Promise<void> | null = null;
 
 const delay = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
@@ -157,4 +159,73 @@ export const waitForEmbeddedApiReady = async () => {
     reportEmbeddedApiError(error);
     throw error;
   }
+};
+
+/**
+ * 尝试重启 Node.js 运行时并等待 API 恢复
+ * 多次调用会合并为同一个 Promise
+ */
+export const restartEmbeddedApi = async (): Promise<boolean> => {
+  if (!isCapacitorAndroid) return false;
+  if (restartInProgress) {
+    try {
+      await restartInProgress;
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  restartInProgress = (async () => {
+    console.warn("[embedded-api] restarting Node.js runtime...");
+    // 重置状态以允许重新启动
+    nodeRuntimeStartPromise = null;
+    embeddedApiReadyPromise = null;
+    nodeRuntimeStarted = false;
+    embeddedApiErrorShown = false;
+    await waitForEmbeddedApiReady();
+    console.info("[embedded-api] restart successful");
+  })();
+
+  try {
+    await restartInProgress;
+    return true;
+  } catch (error) {
+    console.error("[embedded-api] restart failed:", error);
+    return false;
+  } finally {
+    restartInProgress = null;
+  }
+};
+
+const HEALTH_CHECK_INTERVAL_MS = 30000;
+const HEALTH_CHECK_MAX_FAILURES = 2;
+
+/**
+ * 启动定期心跳检查，连续失败后自动重启
+ */
+export const startHealthCheck = () => {
+  if (!isCapacitorAndroid) return;
+  if (healthCheckTimer) return;
+
+  let consecutiveFailures = 0;
+
+  healthCheckTimer = window.setInterval(async () => {
+    const healthy = await isEmbeddedApiHealthy();
+    if (healthy) {
+      consecutiveFailures = 0;
+      return;
+    }
+
+    consecutiveFailures++;
+    console.warn(
+      `[embedded-api] health check failed (${consecutiveFailures}/${HEALTH_CHECK_MAX_FAILURES})`,
+    );
+
+    if (consecutiveFailures >= HEALTH_CHECK_MAX_FAILURES) {
+      consecutiveFailures = 0;
+      window.$message?.warning("内置 API 服务异常，正在自动恢复...", { duration: 3000 });
+      await restartEmbeddedApi();
+    }
+  }, HEALTH_CHECK_INTERVAL_MS);
 };

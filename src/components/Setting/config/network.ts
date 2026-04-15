@@ -1,5 +1,5 @@
 import { useSettingStore } from "@/stores";
-import { isCapacitorNative, isElectron } from "@/utils/env";
+import { isCapacitorAndroid, isCapacitorNative, isElectron } from "@/utils/env";
 import { SettingConfig } from "@/types/settings";
 import { computed, ref, h, markRaw } from "vue";
 import { debounce } from "lodash-es";
@@ -406,6 +406,7 @@ export const useNetworkSettings = (): SettingConfig => {
         items: [
           {
             key: "smtcOpen",
+            show: !isCapacitorAndroid,
             label: isElectron ? "开启系统音频集成" : "开启浏览器媒体会话",
             type: "switch",
             description: isElectron

@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import type { SongType } from "@/types/main";
-import { isElectron } from "@/utils/env";
+import { isCapacitorAndroid, isElectron } from "@/utils/env";
 import { cloneDeep } from "lodash-es";
 import { SongLyric } from "@/types/lyric";
 import { sendTaskbarLyrics } from "@/core/player/PlayerIpc";
@@ -119,6 +119,15 @@ export const useMusicStore = defineStore("music", {
         );
         // 状态栏歌词
         sendTaskbarLyrics(this.songLyric);
+      }
+      // Android 悬浮歌词同步
+      if (isCapacitorAndroid) {
+        import("@/core/player/PlayerController").then(({ usePlayerController }) => {
+          try {
+            const player = usePlayerController();
+            player.syncFloatingLyricData();
+          } catch {}
+        });
       }
     },
     // 获取歌曲封面

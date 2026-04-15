@@ -209,6 +209,8 @@ export interface SettingState {
   showSpectrums: boolean;
   /** 是否开启系统音频集成 */
   smtcOpen: boolean;
+  androidMediaControllerEnabled: boolean;
+  androidMediaControllerDesktopLyricEnabled: boolean;
   /** 歌词模糊 */
   lyricsBlur: boolean;
   /** 歌词混合模式 */
@@ -475,6 +477,8 @@ export interface SettingState {
   automixMaxAnalyzeTime: number;
   /** 启用全局错误弹窗 */
   enableGlobalErrorDialog: boolean;
+  /** Android 显示系统状态栏 */
+  androidShowStatusBar: boolean;
   /** macOS 专属设置 */
   macos: {
     /** 状态栏歌词 */
@@ -551,6 +555,8 @@ export const useSettingStore = defineStore("setting", {
     showPlaylistCount: true,
     showSpectrums: false,
     smtcOpen: true,
+    androidMediaControllerEnabled: true,
+    androidMediaControllerDesktopLyricEnabled: false,
     playSongDemo: false,
     scrobbleSong: false,
     dynamicCover: false,
@@ -749,6 +755,7 @@ export const useSettingStore = defineStore("setting", {
     enableAutomix: false,
     automixMaxAnalyzeTime: 60,
     enableGlobalErrorDialog: true,
+    androidShowStatusBar: false,
     macos: {
       statusBarLyric: {
         enabled: false,

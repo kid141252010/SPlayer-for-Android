@@ -2,7 +2,7 @@
 
 基于 [SPlayer](https://github.com/imsyy/SPlayer) 修改与移植的 Android 音乐播放器，面向 Android 手机与平板，使用 `Vue 3 + Naive UI + Capacitor` 构建，并内置本地 API 运行能力。
 
-当前版本：`v3.0.0-beta.1`
+当前版本：`v3.0.0-rc.1`
 
 ## 项目简介
 
@@ -35,6 +35,8 @@ SPlayer for Android 以原版 SPlayer 为基础，保留了逐字歌词、流媒
 - 支持沉浸式状态栏与全屏播放器体验
 - 支持逐字歌词、全屏播放器、歌单与流媒体页面
 - 支持 Jellyfin / Navidrome / Emby 等流媒体服务
+- 支持桌面歌词（悬浮歌词），含逐字高亮、拖拽定位、锁定穿透、播控按钮
+- 可选显示 / 隐藏系统状态栏
 
 ## 仓库结构
 
@@ -43,6 +45,19 @@ SPlayer for Android 以原版 SPlayer 为基础，保留了逐字歌词、流媒
 - `API`：内置本地 API 入口与服务代码
 - `scripts`：Android 内置 Node 构建与资源准备脚本
 - `capacitor.config.ts`：Capacitor 配置
+
+## 桌面歌词（悬浮歌词）
+
+Android 端桌面歌词基于 `WindowManager` 悬浮窗实现，功能包括：
+
+- **逐字歌词高亮**：基于 `LinearGradient` 着色器，毫秒级时间插值 + `postInvalidateOnAnimation` 自驱动重绘
+- **双行显示**：翻译行或预览下一句
+- **拖拽定位**：自由拖动位置，自动保存
+- **锁定穿透**：锁定后触摸完全穿透到下层 App，通过独立解锁按钮窗口解锁
+- **播控按钮**：点击悬浮窗显示 锁定 / 上一首 / 播放暂停 / 下一首 / 关闭
+- **通知栏联动**：通知栏按钮可一键开关悬浮歌词
+
+需要 `SYSTEM_ALERT_WINDOW`（悬浮窗）权限，首次启用时自动引导授权。
 
 ## 播放方案
 

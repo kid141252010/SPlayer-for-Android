@@ -27,6 +27,7 @@ const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
 const player = usePlayerController();
+const throttledSetSeek = useThrottleFn((value: number) => setSeek(value), 30);
 
 // 拖动时的临时值
 const dragValue = ref(0);
@@ -47,7 +48,7 @@ const sliderProgress = computed({
       return;
     }
     // 结束或者为点击
-    useThrottleFn((value: number) => setSeek(value), 30);
+    throttledSetSeek(value);
   },
 });
 

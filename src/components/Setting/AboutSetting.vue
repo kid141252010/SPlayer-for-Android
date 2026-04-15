@@ -49,6 +49,27 @@
       </n-collapse-transition>
     </div>
     <div class="set-list">
+      <n-h3 prefix="bar"> 问题反馈 </n-h3>
+      <n-card class="set-item feedback-notice">
+        <n-flex justify="space-between" align="center" :wrap="false">
+          <n-flex vertical :gap="4" style="flex: 1; min-width: 0">
+            <n-text strong>Android 端问题请反馈至安卓端仓库</n-text>
+            <n-text :depth="3" style="font-size: 12px">
+              安卓端出现的任何 Bug 请提交 Issue 到安卓端仓库，而非上游 SPlayer 仓库
+            </n-text>
+          </n-flex>
+          <n-button
+            type="primary"
+            strong
+            secondary
+            @click="openLink('https://github.com/Re-BeiChen/SPlayer-for-Android/issues')"
+          >
+            提交 Issue
+          </n-button>
+        </n-flex>
+      </n-card>
+    </div>
+    <div class="set-list">
       <n-h3 prefix="bar"> 特别鸣谢 </n-h3>
       <n-flex vertical :size="12" style="margin-bottom: 12px">
         <n-text :depth="3" style="margin-left: 4px; font-size: 12px" class="tip">
@@ -231,7 +252,7 @@ const allContributors = ref<DeveloperType[]>([]);
 const getContributors = async () => {
   try {
     const response = await fetch(
-      "https://api.github.com/repos/imsyy/SPlayer/contributors?per_page=100&anon=true",
+      "https://api.github.com/repos/Re-BeiChen/SPlayer-for-Android/contributors?per_page=100&anon=true",
     );
     const data = await response.json();
     if (Array.isArray(data)) {
@@ -239,7 +260,7 @@ const getContributors = async () => {
         .filter((item: any) => item.login !== "type-bot" && item.type !== "Bot")
         .map((item: any) => ({
           name: item.login || item.name,
-          role: item.login === "imsyy" ? "Owner / Full Stack" : "Contributor",
+          role: item.login === "Re-BeiChen" ? "Owner / Android" : "Contributor",
           url: item.html_url || "",
           avatar: item.avatar_url || "/images/avatar.jpg?asset",
         }));
@@ -285,11 +306,11 @@ const specialContributors = [
     url: "https://imsyy.top",
   },
   {
-    name: "Bei-Chen-Leo",
+    name: "Re-BeiChen 北尘",
     description: "安卓端适配与发布维护",
-    avatar: "https://github.com/Bei-Chen-Leo.png",
-    buttonText: "GitHub",
-    url: "https://github.com/Bei-Chen-Leo",
+    avatar: "https://github.com/Re-BeiChen.png",
+    buttonText: "主页",
+    url: "https://www.beichen.icu/",
   },
   {
     name: "Kazukokawagawa 池鱼鱼！",

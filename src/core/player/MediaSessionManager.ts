@@ -1,9 +1,17 @@
+import { likeSong } from "@/api/song";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
-import { isElectron } from "@/utils/env";
+import { getCookie } from "@/utils/cookie";
+import { EMBEDDED_API_BASE_URL } from "@/utils/embeddedApi";
+import { isCapacitorAndroid, isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
 import { msToS } from "@/utils/time";
 import type { SystemMediaEvent } from "@emi";
 import { throttle } from "lodash-es";
+import {
+  AndroidNativePlayback,
+  type AndroidNativeCustomActionEvent,
+} from "@/plugins/androidNativePlayback";
+import type { PluginListenerHandle } from "@capacitor/core";
 import { usePlayerController } from "./PlayerController";
 import {
   enableDiscordRpc,
@@ -16,28 +24,36 @@ import {
   updateDiscordConfig,
 } from "./PlayerIpc";
 
-/**
- * 媒体会话管理器，负责不同平台的媒体控制集成
- * 在 Electron 平台上会使用原生插件，Web 平台上会使用 Navigator.mediaSession
- */
 class MediaSessionManager {
   private metadataAbortController: AbortController | null = null;
   private currentRate: number = 1;
+  private androidCustomActionListener: PluginListenerHandle | null = null;
 
   private throttledSendTimeline = throttle((currentTime: number, duration: number) => {
     sendMediaTimeline(currentTime, duration);
   }, 200);
 
-  /**
-   * 是否使用原生媒体集成
-   */
+  private throttledSyncAndroidRemoteState = throttle(
+    (playing: boolean, positionMs: number, durationMs: number) => {
+      void AndroidNativePlayback.syncRemoteState({ playing, positionMs, durationMs });
+    },
+    1000,
+  );
+
+  private throttledUpdatePositionState = throttle((duration: number, position: number) => {
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.setPositionState({
+        duration: msToS(duration),
+        position: msToS(position),
+        playbackRate: this.currentRate,
+      });
+    }
+  }, 1000);
+
   private shouldUseNativeMedia(): boolean {
-    return isElectron;
+    return isElectron || isCapacitorAndroid;
   }
 
-  /**
-   * 处理原生来的媒体事件
-   */
   private handleMediaEvent(
     event: SystemMediaEvent,
     player: ReturnType<typeof usePlayerController>,
@@ -85,25 +101,119 @@ class MediaSessionManager {
     }
   }
 
-  /**
-   * 初始化媒体会话
-   */
+  private async bindAndroidMediaEvents(player: ReturnType<typeof usePlayerController>) {
+    if (this.androidCustomActionListener) {
+      return;
+    }
+
+    this.androidCustomActionListener = await AndroidNativePlayback.addListener(
+      "customAction",
+      (event: AndroidNativeCustomActionEvent) => {
+        switch (event.action) {
+          case "next":
+            void player.nextOrPrev("next");
+            break;
+          case "previous":
+            void player.nextOrPrev("prev");
+            break;
+          case "play":
+            void player.play();
+            break;
+          case "pause":
+            void player.pause();
+            break;
+          case "favorite": {
+            if (event.success === false) {
+              if (event.message === "login_required") {
+                window.$message.warning("璇峰厛鐧诲綍鍚庡啀鏀惰棌姝屾洸");
+              } else if (
+                typeof event.songId === "number" &&
+                typeof event.liked === "boolean" &&
+                event.message !== "favorite_unavailable" &&
+                event.message !== "favorite_busy"
+              ) {
+                void this.retryFavoriteThroughWebApi(player, event.songId, !event.liked);
+              } else {
+                window.$message.error("鏀惰棌鎿嶄綔澶辫触锛岃閲嶈瘯");
+              }
+              break;
+            }
+            const targetSongId =
+              typeof event.songId === "number"
+                ? event.songId
+                : typeof getPlaySongData()?.id === "number"
+                  ? getPlaySongData()!.id
+                  : undefined;
+            if (typeof event.liked === "boolean" && typeof targetSongId === "number") {
+              player.applySongLikeState(targetSongId, event.liked);
+            }
+            break;
+          }
+          case "desktopLyric":
+            if (typeof event.desktopLyricEnabled === "boolean") {
+              player.setDesktopLyricShow(event.desktopLyricEnabled);
+            } else {
+              player.toggleDesktopLyric();
+            }
+            break;
+          case "collapse":
+            break;
+          case "autoNext":
+            if (typeof event.songId === "number") {
+              void player.applyNativeAutoNext(event.songId, event.liked);
+            }
+            break;
+        }
+      },
+    );
+  }
+
+  private async retryFavoriteThroughWebApi(
+    player: ReturnType<typeof usePlayerController>,
+    songId: number,
+    targetLike: boolean,
+  ) {
+    try {
+      await likeSong(songId, targetLike);
+      player.applySongLikeState(songId, targetLike);
+      await player.syncAndroidPlaybackContext();
+    } catch (error) {
+      console.error("[AndroidMedia] favorite fallback failed:", error);
+      window.$message.error("鏀惰棌鎿嶄綔澶辫触锛岃閲嶈瘯");
+    }
+  }
+
+  public async syncAndroidApiContext() {
+    if (!isCapacitorAndroid) return;
+
+    const musicCookie = getCookie("MUSIC_U");
+    await AndroidNativePlayback.syncApiContext({
+      apiBaseUrl: EMBEDDED_API_BASE_URL,
+      cookie: musicCookie ? `MUSIC_U=${musicCookie};os=pc;` : "",
+    });
+  }
+
   public init() {
     const settingStore = useSettingStore();
-    if (!settingStore.smtcOpen) return;
-
     const player = usePlayerController();
     const statusStore = useStatusStore();
 
     this.currentRate = statusStore.playRate;
 
+    if (isCapacitorAndroid) {
+      void this.bindAndroidMediaEvents(player);
+      void this.syncAndroidApiContext();
+      return;
+    }
+
+    if (!settingStore.smtcOpen) return;
+
     if (isElectron) {
       window.electron.ipcRenderer.removeAllListeners("media-event");
       window.electron.ipcRenderer.on("media-event", (_, event) => {
-        this.handleMediaEvent(event, player);
+        this.handleMediaEvent(event as SystemMediaEvent, player);
       });
 
-      // 同步初始播放模式状态
       const shuffle = statusStore.shuffleMode !== "off";
       const repeat =
         statusStore.repeatMode === "list"
@@ -113,11 +223,8 @@ class MediaSessionManager {
             : "None";
       sendMediaPlayMode(shuffle, repeat);
       player.syncMediaPlayMode();
-
-      // 同步初始播放速率
       sendMediaPlaybackRate(statusStore.playRate);
 
-      // Discord RPC 初始化
       if (settingStore.discordRpc.enabled) {
         enableDiscordRpc();
         updateDiscordConfig({
@@ -126,11 +233,9 @@ class MediaSessionManager {
         });
       }
 
-      // 如果有原生集成则不需要 Web API
-      if (settingStore.smtcOpen) return;
+      return;
     }
 
-    // Web API 初始化
     if ("mediaSession" in navigator) {
       const nav = navigator.mediaSession;
       nav.setActionHandler("play", () => player.play());
@@ -143,41 +248,52 @@ class MediaSessionManager {
     }
   }
 
-  /**
-   * 更新元数据
-   */
   public async updateMetadata() {
-    if (!("mediaSession" in navigator) && !isElectron) return;
+    if (!("mediaSession" in navigator) && !this.shouldUseNativeMedia()) return;
+
     const musicStore = useMusicStore();
     const settingStore = useSettingStore();
     const song = getPlaySongData();
     if (!song) return;
+
     if (this.metadataAbortController) {
       this.metadataAbortController.abort();
     }
     this.metadataAbortController = new AbortController();
     const { signal } = this.metadataAbortController;
     const metadata = this.buildMetadata(song);
-    // 原生插件
+
+    if (isCapacitorAndroid) {
+      await this.syncAndroidApiContext();
+      await AndroidNativePlayback.updateMetadata({
+        songId: typeof song.id === "number" ? song.id : undefined,
+        title: metadata.title,
+        artist: metadata.artist,
+        album: metadata.album,
+        coverUrl: metadata.coverUrl,
+        durationMs: song.duration || 0,
+        canLike: !song.path && song.type !== "streaming",
+      });
+      return;
+    }
+
     if (this.shouldUseNativeMedia() && settingStore.smtcOpen) {
       try {
         let coverBuffer: Uint8Array | undefined;
-        // 本地文件且封面不是 Blob URL
+
         if (song.path && !metadata.coverUrl.startsWith("blob:")) {
           try {
-            const coverData = await window.electron.ipcRenderer.invoke(
+            const coverData = (await window.electron.ipcRenderer.invoke(
               "get-music-cover",
               song.path,
-            );
+            )) as { data?: ArrayLike<number> } | null;
             if (coverData?.data && !signal.aborted) {
               coverBuffer = new Uint8Array(coverData.data);
             }
           } catch {
-            // 忽略读取失败
+            // ignore
           }
-        }
-        // 在线歌曲
-        else if (
+        } else if (
           metadata.coverUrl &&
           (metadata.coverUrl.startsWith("http") || metadata.coverUrl.startsWith("blob:"))
         ) {
@@ -185,9 +301,10 @@ class MediaSessionManager {
             const resp = await fetch(metadata.coverUrl, { signal });
             coverBuffer = new Uint8Array(await resp.arrayBuffer());
           } catch {
-            // 忽略下载失败
+            // ignore
           }
         }
+
         sendMediaMetadata({
           songName: metadata.title,
           authorName: metadata.artist,
@@ -197,9 +314,9 @@ class MediaSessionManager {
           duration: song.duration,
           ncmId: typeof song.id === "number" ? song.id : undefined,
         });
-      } catch (e) {
-        if (!(e instanceof DOMException && e.name === "AbortError")) {
-          console.error("[Media] 更新元数据失败", e);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          console.error("[Media] update metadata failed:", error);
         }
       } finally {
         if (this.metadataAbortController?.signal === signal) {
@@ -209,7 +326,6 @@ class MediaSessionManager {
       return;
     }
 
-    // Web API
     if ("mediaSession" in navigator) {
       navigator.mediaSession.metadata = new window.MediaMetadata({
         title: metadata.title,
@@ -220,27 +336,19 @@ class MediaSessionManager {
     }
   }
 
-  /**
-   * 构建元数据
-   */
-  private buildMetadata(song: ReturnType<typeof getPlaySongData>): {
-    title: string;
-    artist: string;
-    album: string;
-    coverUrl: string;
-  } {
+  private buildMetadata(song: ReturnType<typeof getPlaySongData>) {
     const isRadio = song!.type === "radio";
     const musicStore = useMusicStore();
 
     return {
       title: song!.name,
       artist: isRadio
-        ? song!.dj?.creator || "未知播客"
+        ? song!.dj?.creator || "鏈煡鎾"
         : Array.isArray(song!.artists)
           ? song!.artists.map((a) => a.name).join("/")
           : String(song!.artists),
       album: isRadio
-        ? song!.dj?.name || "未知播客"
+        ? song!.dj?.name || "鏈煡鎾"
         : typeof song!.album === "object"
           ? song!.album.name
           : String(song!.album),
@@ -248,9 +356,6 @@ class MediaSessionManager {
     };
   }
 
-  /**
-   * 构建专辑封面数组
-   */
   private buildArtwork(musicStore: ReturnType<typeof useMusicStore>) {
     return [
       {
@@ -281,21 +386,17 @@ class MediaSessionManager {
     ];
   }
 
-  /**
-   * 更新播放进度
-   * @param duration 总时长
-   * @param position 当前位置
-   * @param immediate 是否立即发送，用于 Seek 操作
-   */
   public updateState(duration: number, position: number, immediate: boolean = false) {
     const settingStore = useSettingStore();
+    if (isCapacitorAndroid) {
+      this.throttledSyncAndroidRemoteState(true, position, duration);
+      return;
+    }
     if (!settingStore.smtcOpen) return;
 
-    // 原生插件
     if (this.shouldUseNativeMedia()) {
       if (immediate) {
         this.throttledSendTimeline.cancel();
-        // 绝对位置更新，避免 Seek 操作的进度更新被限流丢弃
         sendMediaTimeline(position, duration, true);
       } else {
         this.throttledSendTimeline(position, duration);
@@ -303,49 +404,31 @@ class MediaSessionManager {
       return;
     }
 
-    // Web API
     this.throttledUpdatePositionState(duration, position);
   }
 
-  /**
-   * 更新播放状态
-   */
   public updatePlaybackStatus(isPlaying: boolean) {
-    // 发送到原生插件
+    if (isCapacitorAndroid) return;
     if (this.shouldUseNativeMedia()) {
       sendMediaPlayState(isPlaying ? "Playing" : "Paused");
     }
   }
 
-  /**
-   * 更新播放速率
-   */
   public updatePlaybackRate(rate: number) {
     this.currentRate = rate;
 
+    if (isCapacitorAndroid) return;
     if (this.shouldUseNativeMedia()) {
       sendMediaPlaybackRate(rate);
     }
   }
 
   public updateVolume(volume: number) {
+    if (isCapacitorAndroid) return;
     if (this.shouldUseNativeMedia()) {
       sendMediaVolume(volume);
     }
   }
-
-  /**
-   * 限流更新进度状态
-   */
-  private throttledUpdatePositionState = throttle((duration: number, position: number) => {
-    if ("mediaSession" in navigator) {
-      navigator.mediaSession.setPositionState({
-        duration: msToS(duration),
-        position: msToS(position),
-        playbackRate: this.currentRate,
-      });
-    }
-  }, 1000);
 }
 
 export const mediaSessionManager = new MediaSessionManager();
