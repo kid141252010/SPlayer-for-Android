@@ -125,7 +125,7 @@ jobs:
           mkdir -p android/app
           echo "$KEYSTORE_BASE64" | base64 --decode > android/app/release.keystore
           cat > android/key.properties <<EOF
-          storeFile=app/release.keystore
+          storeFile=release.keystore
           storePassword=${KEYSTORE_PASSWORD}
           keyAlias=${KEY_ALIAS}
           keyPassword=${KEY_PASSWORD}
