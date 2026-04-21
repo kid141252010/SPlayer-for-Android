@@ -82,6 +82,7 @@
 body {
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -108,10 +109,12 @@ audio {
 .text-hidden {
   display: -webkit-box;
   overflow: hidden;
-  word-break: break-all;
+  word-break: break-word;
+  overflow-wrap: break-word;
   line-clamp: 1;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 1;
+  min-width: 0;
 }
 
 // tabs

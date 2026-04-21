@@ -108,6 +108,23 @@ export interface AndroidNativeFloatingLyricSongInfoPayload {
   artist: string;
 }
 
+export interface AndroidNativeFloatingLyricConfigPayload {
+  playedColor?: string;
+  unplayedColor?: string;
+  shadowColor?: string;
+  backgroundMaskColor?: string;
+  textBackgroundMask?: boolean;
+  showTran?: boolean;
+  showWordLyrics?: boolean;
+  isDoubleLine?: boolean;
+  animation?: boolean;
+  fontSize?: number;
+  fontWeight?: number;
+  position?: "left" | "center" | "right" | "both";
+  windowWidthPercent?: number;
+  windowHeightDp?: number;
+}
+
 export interface AndroidNativePlaybackPlugin {
   load(options: AndroidNativeLoadOptions): Promise<AndroidNativePlaybackState>;
   play(): Promise<AndroidNativePlaybackState>;
@@ -119,6 +136,7 @@ export interface AndroidNativePlaybackPlugin {
   updateMetadata(options: AndroidNativeMetadataPayload): Promise<void>;
   updateQueueContext(options: AndroidNativeQueueContextPayload): Promise<void>;
   updateNotificationPrefs(options: AndroidNativeNotificationPrefsPayload): Promise<void>;
+  setAllowMixWithOthers(options: { allow: boolean }): Promise<void>;
   syncApiContext(options: AndroidNativeApiContextPayload): Promise<void>;
   syncRemoteState(options: {
     playing: boolean;
@@ -132,6 +150,7 @@ export interface AndroidNativePlaybackPlugin {
   updateFloatingLyricData(options: AndroidNativeFloatingLyricDataPayload): Promise<void>;
   updateFloatingLyricProgress(options: AndroidNativeFloatingLyricProgressPayload): Promise<void>;
   updateFloatingLyricSongInfo(options: AndroidNativeFloatingLyricSongInfoPayload): Promise<void>;
+  updateFloatingLyricConfig(options: AndroidNativeFloatingLyricConfigPayload): Promise<void>;
   checkOverlayPermission(): Promise<AndroidNativePermissionResult>;
   requestOverlayPermission(): Promise<AndroidNativePermissionResult>;
   addListener(

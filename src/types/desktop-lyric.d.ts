@@ -57,6 +57,10 @@ export interface LyricConfig {
   alwaysShowPlayInfo: boolean;
   /** 是否开启歌词切换动画 */
   animation: boolean;
+  /** Android 端：悬浮窗宽度占屏幕百分比 (30-100) */
+  windowWidthPercent?: number;
+  /** Android 端：悬浮窗高度 (dp) */
+  windowHeightDp?: number;
 }
 
 /**

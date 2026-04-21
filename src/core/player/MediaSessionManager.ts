@@ -13,6 +13,7 @@ import {
 } from "@/plugins/androidNativePlayback";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { usePlayerController } from "./PlayerController";
+import { useAudioManager } from "./AudioManager";
 import {
   enableDiscordRpc,
   sendMediaMetadata,
@@ -389,7 +390,12 @@ class MediaSessionManager {
   public updateState(duration: number, position: number, immediate: boolean = false) {
     const settingStore = useSettingStore();
     if (isCapacitorAndroid) {
-      this.throttledSyncAndroidRemoteState(true, position, duration);
+      // 使用原生 ExoPlayer (AndroidNativeAudioPlayer) 时，ExoPlayer 会自动更新 MediaSession 位置，
+      // 不再通过 syncRemoteState 覆盖为 remote mode。
+      const engineType = useAudioManager().engineType;
+      if (engineType !== "android-native") {
+        this.throttledSyncAndroidRemoteState(true, position, duration);
+      }
       return;
     }
     if (!settingStore.smtcOpen) return;

@@ -106,13 +106,11 @@ export class AndroidNativeAudioPlayer extends BaseAudioPlayer {
 
   /**
    * 跳转到指定时间
-   * 通过 load() 重新加载音频到目标位置来实现 seek。
-   * ExoPlayer 的 seekTo() 对部分音频源不可靠，会静默失败回到 0，
-   * 而 load(url, positionMs) 走完整的加载流程，可确保定位到正确位置。
+   * 已加载媒体用 seekTo()，保留 ExoPlayer 内部缓冲，避免重新 prepare
+   * 导致签名 URL 二次请求失败或 Range 请求被 CDN 降级为 200 的问题。
    */
   public override async seek(time: number): Promise<void> {
     const safeTime = Math.max(0, time);
-    // 立即锁定，确保 currentTime getter 返回目标值
     this.isSeekLocked = true;
     this.seekTargetSeconds = safeTime;
     this.currentTimeSecondsValue = safeTime;
@@ -120,17 +118,12 @@ export class AndroidNativeAudioPlayer extends BaseAudioPlayer {
     this.pendingSeekDeadline = Date.now() + 6000;
     this.pendingSeekObservedAtTarget = false;
 
-    const wasPlaying = !this.pausedValue;
     this.cancelPendingPause();
     this.dispatch(AUDIO_EVENTS.SEEKING);
-    // 用 load 重新加载到目标位置，而非 seekTo
-    const state = await AndroidNativePlayback.load({
-      url: this.sourceUrl,
+    const state = await AndroidNativePlayback.seek({
       positionMs: Math.max(0, Math.round(safeTime * 1000)),
-      autoPlay: wasPlaying,
     });
     this.applyState(state);
-    // 释放硬锁；后续由 pendingSeekSeconds 软保护
     this.isSeekLocked = false;
     this.dispatch(AUDIO_EVENTS.SEEKED);
   }
@@ -142,10 +135,8 @@ export class AndroidNativeAudioPlayer extends BaseAudioPlayer {
     this.pendingSeekSeconds = safeTime;
     this.pendingSeekDeadline = Date.now() + 6000;
     this.pendingSeekObservedAtTarget = false;
-    const state = await AndroidNativePlayback.load({
-      url: this.sourceUrl,
+    const state = await AndroidNativePlayback.seek({
       positionMs: Math.max(0, Math.round(safeTime * 1000)),
-      autoPlay: !this.pausedValue,
     });
     this.applyState(state);
     this.dispatch(AUDIO_EVENTS.SEEKED);

@@ -178,32 +178,54 @@ jobs:
           fi
 
           if [ "$BUILD_TYPE" = "release" ]; then
-            SOURCE_APK="android/app/build/outputs/apk/release/app-release.apk"
+            APK_DIR="android/app/build/outputs/apk/release"
+            APK_SUFFIX="release"
           else
-            SOURCE_APK="android/app/build/outputs/apk/debug/app-debug.apk"
+            APK_DIR="android/app/build/outputs/apk/debug"
+            APK_SUFFIX="debug"
           fi
 
-          APK_NAME="SPlayer-for-Android-${TAG}.apk"
           mkdir -p release
-          cp "${SOURCE_APK}" "release/${APK_NAME}"
-          sha256sum "release/${APK_NAME}" > "release/${APK_NAME}.sha256"
+          ABIS=(armeabi-v7a arm64-v8a x86 x86_64)
+          FOUND=0
+          for abi in "${ABIS[@]}"; do
+            SRC="${APK_DIR}/app-${abi}-${APK_SUFFIX}.apk"
+            if [ ! -f "${SRC}" ]; then
+              # release 构建在未配置签名时，APK 可能带 -unsigned 后缀
+              SRC_ALT="${APK_DIR}/app-${abi}-${APK_SUFFIX}-unsigned.apk"
+              if [ -f "${SRC_ALT}" ]; then
+                SRC="${SRC_ALT}"
+              else
+                echo "::warning::Expected APK not found: ${SRC}"
+                continue
+              fi
+            fi
+            DST="release/SPlayer-for-Android-${TAG}-${abi}.apk"
+            cp "${SRC}" "${DST}"
+            sha256sum "${DST}" > "${DST}.sha256"
+            FOUND=$((FOUND + 1))
+          done
+
+          if [ "${FOUND}" -eq 0 ]; then
+            echo "::error::No per-ABI APK found under ${APK_DIR}"
+            ls -la "${APK_DIR}" || true
+            exit 1
+          fi
 
           {
             echo "tag=${TAG}"
             echo "name=${NAME}"
             echo "build_type=${BUILD_TYPE}"
-            echo "apk_name=${APK_NAME}"
-            echo "apk_path=release/${APK_NAME}"
-            echo "sha256_path=release/${APK_NAME}.sha256"
+            echo "apk_count=${FOUND}"
           } >> "$GITHUB_OUTPUT"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.meta.outputs.apk_name }}
+          name: SPlayer-for-Android-${{ steps.meta.outputs.tag }}
           path: |
-            ${{ steps.meta.outputs.apk_path }}
-            ${{ steps.meta.outputs.sha256_path }}
+            release/*.apk
+            release/*.sha256
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -214,10 +236,16 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ inputs.prerelease }}
           files: |
-            ${{ steps.meta.outputs.apk_path }}
-            ${{ steps.meta.outputs.sha256_path }}
+            release/*.apk
+            release/*.sha256
           body: |
-            Automatically built Android APK.
+            Automatically built Android APK (split per ABI).
+
+            Artifacts (${{ steps.meta.outputs.apk_count }}):
+            - `armeabi-v7a` — 32-bit ARM (旧设备)
+            - `arm64-v8a` — 64-bit ARM (绝大多数现代设备)
+            - `x86` — 32-bit Intel (模拟器 / 少数设备)
+            - `x86_64` — 64-bit Intel (Intel 平板 / 模拟器)
 
             Build pipeline:
             - GitHub Actions `workflow_dispatch`
@@ -225,8 +253,9 @@ jobs:
             - `npx cap sync android`
             - `pnpm build:android:node`
             - `pnpm prepare:android:embedded`
-            - `./gradlew assemble${{ inputs.build_type == 'release' && 'Release' || 'Debug' }}`
+            - `./gradlew assemble${{ inputs.build_type == 'release' && 'Release' || 'Debug' }}`（启用 `splits.abi`）
 
             Notes:
             - Build type: `${{ steps.meta.outputs.build_type }}`
-            - A `sha256` checksum file is included
+            - 每个 APK 附带对应的 `sha256` 校验文件
+            - 根据设备 CPU 架构选择对应包即可，推荐优先选 `arm64-v8a`

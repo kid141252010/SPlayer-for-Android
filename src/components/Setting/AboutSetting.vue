@@ -31,16 +31,21 @@
           <n-collapse arrow-placement="right">
             <n-collapse-item name="version">
               <template #header>
-                <n-flex class="version">
+                <div class="version">
                   <n-text>最新版本</n-text>
-                  <n-tag :bordered="false" size="small" type="primary">
+                  <n-tag
+                    :bordered="false"
+                    size="small"
+                    type="primary"
+                    class="version-tag"
+                  >
                     {{ newVersion?.version || "v0.0.0" }}
                   </n-tag>
                   <n-tag v-if="newVersion?.prerelease" class="test" size="small" type="warning">
                     测试版
                   </n-tag>
                   <n-text :depth="3" class="time">{{ newVersion?.time }}</n-text>
-                </n-flex>
+                </div>
               </template>
               <div class="markdown-body" v-html="newVersion?.changelog" @click="jumpLink" />
             </n-collapse-item>
@@ -62,9 +67,27 @@
             type="primary"
             strong
             secondary
-            @click="openLink('https://github.com/Re-BeiChen/SPlayer-for-Android/issues')"
+            @click="openLink('https://github.com/SPlayer-Dev/SPlayer-for-Android/issues')"
           >
             提交 Issue
+          </n-button>
+        </n-flex>
+      </n-card>
+      <n-card class="set-item feedback-notice" style="margin-top: 12px">
+        <n-flex justify="space-between" align="center" :wrap="false">
+          <n-flex vertical :gap="4" style="flex: 1; min-width: 0">
+            <n-text strong>加入 QQ 交流群</n-text>
+            <n-text :depth="3" style="font-size: 12px">
+              群内可交流使用问题与反馈 Bug，但仍建议通过提交 Issue 以便跟踪
+            </n-text>
+          </n-flex>
+          <n-button
+            type="primary"
+            strong
+            secondary
+            @click="openLink('https://qm.qq.com/q/AjIqKftqgM')"
+          >
+            加入 QQ 群
           </n-button>
         </n-flex>
       </n-card>
@@ -204,12 +227,12 @@
             :name="item.version"
           >
             <n-card class="set-item update-data">
-              <n-flex class="version" justify="space-between">
-                <n-tag :bordered="false" size="small" type="primary">
+              <div class="version">
+                <n-tag :bordered="false" size="small" type="primary" class="version-tag">
                   {{ item?.version || "v0.0.0" }}
                 </n-tag>
                 <n-text :depth="3" class="time">{{ item?.time }}</n-text>
-              </n-flex>
+              </div>
               <div class="markdown-body" v-html="item?.changelog" @click="jumpLink" />
             </n-card>
           </n-collapse-item>
@@ -252,7 +275,7 @@ const allContributors = ref<DeveloperType[]>([]);
 const getContributors = async () => {
   try {
     const response = await fetch(
-      "https://api.github.com/repos/Re-BeiChen/SPlayer-for-Android/contributors?per_page=100&anon=true",
+      "https://api.github.com/repos/SPlayer-Dev/SPlayer-for-Android/contributors?per_page=100&anon=true",
     );
     const data = await response.json();
     if (Array.isArray(data)) {
@@ -340,7 +363,7 @@ const specialContributors = [
 const communityData = [
   {
     name: "加入交流群",
-    url: "https://qm.qq.com/cgi-bin/qm/qr?k=2-cVSf1bE0AvAehCib00qFEFdUvPaJ_k&jump_from=webapi&authKey=1NEhib9+GsmsXVo2rCc0IbRaVHeeRXJJ0gbsyKDcIwDdAzYySOubkFCvkV32+7Cw",
+    url: "https://qm.qq.com/q/AjIqKftqgM",
     icon: "QQ",
   },
   {
@@ -433,14 +456,42 @@ onMounted(() => {
     align-items: normal !important;
   }
   .version {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
     padding-left: 4px;
+    width: 100%;
+    min-width: 0;
     .n-tag {
       pointer-events: none;
       border-radius: 6px;
+      max-width: 100%;
+      :deep(.n-tag__content) {
+        white-space: normal;
+        word-break: break-all;
+      }
+    }
+    .version-tag {
+      flex: 0 1 auto;
+      min-width: 0;
     }
     .time {
       margin-left: auto;
       font-size: 13px;
+      white-space: nowrap;
+    }
+    // 窄屏幕下让版本号、时间各占一行，避免被压成竖排
+    @media (max-width: 768px) {
+      .time {
+        margin-left: 0;
+        flex-basis: 100%;
+        white-space: normal;
+        word-break: break-all;
+      }
+      .version-tag {
+        flex-basis: 100%;
+      }
     }
   }
 }

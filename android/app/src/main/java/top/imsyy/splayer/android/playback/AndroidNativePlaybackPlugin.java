@@ -135,6 +135,17 @@ public class AndroidNativePlaybackPlugin extends Plugin {
   }
 
   @PluginMethod
+  public void setAllowMixWithOthers(PluginCall call) {
+    boolean allow = call.getBoolean("allow", true);
+    runOnMainThread(
+        call,
+        () -> {
+          PlaybackManager.getInstance(getContext()).setAllowMixWithOthers(allow);
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
   public void syncApiContext(PluginCall call) {
     runOnMainThread(
         call,
@@ -248,6 +259,19 @@ public class AndroidNativePlaybackPlugin extends Plugin {
         call,
         () -> {
           PlaybackManager.getInstance(getContext()).updateFloatingLyricSongInfo(name, artist);
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
+  public void updateFloatingLyricConfig(PluginCall call) {
+    com.getcapacitor.JSObject data = call.getObject("config");
+    // 如果没有嵌套 config，直接用 call 的所有字段
+    com.getcapacitor.JSObject payload = data != null ? data : call.getData();
+    runOnMainThread(
+        call,
+        () -> {
+          PlaybackManager.getInstance(getContext()).updateFloatingLyricConfig(payload);
           call.resolve();
         });
   }

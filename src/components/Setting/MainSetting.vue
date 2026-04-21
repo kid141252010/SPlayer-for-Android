@@ -550,6 +550,37 @@ onMounted(() => {
         }
       }
     }
+    // 在更窄的屏幕（多数手机竖屏）上，改为上下堆叠，避免标签被压成每行一个字
+    @media (max-width: 560px) {
+      .set-item {
+        .n-card__content {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 10px;
+        }
+        .label {
+          padding-right: 0;
+          width: 100%;
+          min-width: 0;
+          .name {
+            white-space: normal;
+            word-break: break-word;
+          }
+        }
+        .n-flex {
+          flex-flow: wrap !important;
+          width: 100%;
+          justify-content: flex-start !important;
+        }
+        .set {
+          width: 100% !important;
+          min-width: 0 !important;
+          &.n-switch {
+            width: max-content !important;
+          }
+        }
+      }
+    }
   }
   .n-menu {
     padding-bottom: 0;

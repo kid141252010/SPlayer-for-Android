@@ -410,6 +410,23 @@ export const usePlaySettings = (): SettingConfig => {
             disabled: computed(() => !settingStore.androidMediaControllerEnabled),
           },
           {
+            key: "androidAllowMixWithOthers",
+            label: "允许与其他应用同时播放",
+            type: "switch",
+            show: isCapacitorAndroid,
+            description:
+              "关闭时，开始播放会请求独占音频焦点并暂停其他正在播放的应用；开启时与其他应用混音共存。",
+            value: computed({
+              get: () => settingStore.androidAllowMixWithOthers,
+              set: (v) => {
+                settingStore.androidAllowMixWithOthers = v;
+                if (isCapacitorAndroid) {
+                  void AndroidNativePlayback.setAllowMixWithOthers({ allow: v });
+                }
+              },
+            }),
+          },
+          {
             key: "preventSleep",
             label: "阻止系统息屏",
             type: "switch",

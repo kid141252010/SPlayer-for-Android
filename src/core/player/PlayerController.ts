@@ -772,6 +772,10 @@ class PlayerController {
       controllerEnabled: settingStore.androidMediaControllerEnabled,
       desktopLyricButtonEnabled: settingStore.androidMediaControllerDesktopLyricEnabled,
     });
+
+    await AndroidNativePlayback.setAllowMixWithOthers({
+      allow: settingStore.androidAllowMixWithOthers,
+    });
   }
 
   public async applyNativeAutoNext(songId: number, liked?: boolean) {
@@ -917,13 +921,15 @@ class PlayerController {
       playerIpc.sendTaskbarMode("normal");
       playerIpc.sendTaskbarProgress(statusStore.progress);
       console.log(`▶️ [${musicStore.playSong?.id}] 歌曲播放:`, name);
-      // 同步状态到 Android 通知栏
+      // 同步状态到 Android 通知栏（仅在非原生 ExoPlayer 引擎下）
       if (isCapacitorAndroid) {
-        void AndroidNativePlayback.syncRemoteState({
-          playing: true,
-          positionMs: statusStore.currentTime,
-          durationMs: statusStore.duration,
-        });
+        if (useAudioManager().engineType !== "android-native") {
+          void AndroidNativePlayback.syncRemoteState({
+            playing: true,
+            positionMs: statusStore.currentTime,
+            durationMs: statusStore.duration,
+          });
+        }
         this.syncFloatingLyricProgress(statusStore.currentTime, true);
       }
     });
@@ -940,13 +946,15 @@ class PlayerController {
       playerIpc.sendTaskbarProgress(statusStore.progress);
       lastfmScrobbler.pause();
       console.log(`⏸️ [${musicStore.playSong?.id}] 歌曲暂停`);
-      // 同步状态到 Android 通知栏
+      // 同步状态到 Android 通知栏（仅在非原生 ExoPlayer 引擎下）
       if (isCapacitorAndroid) {
-        void AndroidNativePlayback.syncRemoteState({
-          playing: false,
-          positionMs: statusStore.currentTime,
-          durationMs: statusStore.duration,
-        });
+        if (useAudioManager().engineType !== "android-native") {
+          void AndroidNativePlayback.syncRemoteState({
+            playing: false,
+            positionMs: statusStore.currentTime,
+            durationMs: statusStore.duration,
+          });
+        }
         this.syncFloatingLyricProgress(statusStore.currentTime, false);
       }
     });
@@ -1795,6 +1803,8 @@ class PlayerController {
           }
           await AndroidNativePlayback.showFloatingLyric();
           statusStore.showDesktopLyric = true;
+          // 推送当前桌面歌词配置（颜色/字号/遮罩等），服务就绪后会被应用
+          this.syncFloatingLyricConfig();
           // 立即推送数据到 PlaybackManager 缓冲区（服务就绪后自动回放）
           this.syncFloatingLyricData();
           this.syncFloatingLyricSongInfo();
@@ -1866,6 +1876,34 @@ class PlayerController {
       timeMs,
       playing,
     }).catch(() => {});
+  }
+
+  /**
+   * 从 localStorage 读取并推送桌面歌词配置到 Android 悬浮歌词服务
+   */
+  public syncFloatingLyricConfig() {
+    if (!isCapacitorAndroid) return;
+    try {
+      const raw = localStorage.getItem("android-desktop-lyric-config");
+      const config = raw ? JSON.parse(raw) : null;
+      if (!config) return;
+      AndroidNativePlayback.updateFloatingLyricConfig({
+        playedColor: config.playedColor,
+        unplayedColor: config.unplayedColor,
+        shadowColor: config.shadowColor,
+        backgroundMaskColor: config.backgroundMaskColor,
+        textBackgroundMask: config.textBackgroundMask,
+        showTran: config.showTran,
+        showWordLyrics: config.showWordLyrics,
+        isDoubleLine: config.isDoubleLine,
+        animation: config.animation,
+        fontSize: config.fontSize,
+        fontWeight: config.fontWeight,
+        position: config.position,
+      }).catch(() => {});
+    } catch (e) {
+      console.warn("[PlayerController] syncFloatingLyricConfig failed", e);
+    }
   }
 
   /** 切换任务栏歌词 */

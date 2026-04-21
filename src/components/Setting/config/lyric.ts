@@ -8,9 +8,12 @@ import { DEFAULT_TASKBAR_CONFIG, TASKBAR_IPC_CHANNELS, type TaskbarConfig } from
 import { isElectron, isWin, isMac, isCapacitorAndroid } from "@/utils/env";
 import { descMultiline } from "@/utils/format";
 import { openAMLLServer, openExcludeLyric, openFontManager } from "@/utils/modal";
+import { AndroidNativePlayback } from "@/plugins/androidNativePlayback";
 import { cloneDeep, isEqual } from "lodash-es";
 import { toRef } from "vue";
 import LyricPreview from "../components/LyricPreview.vue";
+
+const ANDROID_LYRIC_CONFIG_KEY = "android-desktop-lyric-config";
 
 export const useLyricSettings = (): SettingConfig => {
   const player = usePlayerController();
@@ -24,6 +27,20 @@ export const useLyricSettings = (): SettingConfig => {
   const taskbarLyricConfig = reactive<TaskbarConfig>({ ...DEFAULT_TASKBAR_CONFIG });
 
   const getDesktopLyricConfig = async () => {
+    if (isCapacitorAndroid) {
+      try {
+        const raw = localStorage.getItem(ANDROID_LYRIC_CONFIG_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw) as Partial<LyricConfig>;
+          Object.assign(desktopLyricConfig, saved);
+        }
+      } catch (e) {
+        console.warn("[lyric] Failed to load Android desktop lyric config", e);
+      }
+      // 首次或每次读取都推送一次，确保 Service 与 JS 状态一致
+      pushAndroidLyricConfig();
+      return;
+    }
     if (!isElectron) return;
     const config = await window.electron.ipcRenderer.invoke("desktop-lyric:get-option");
     if (config) Object.assign(desktopLyricConfig, config);
@@ -36,8 +53,36 @@ export const useLyricSettings = (): SettingConfig => {
     });
   };
 
+  /** Android：把当前桌面歌词配置推送给原生 FloatingLyricService */
+  const pushAndroidLyricConfig = () => {
+    if (!isCapacitorAndroid) return;
+    AndroidNativePlayback.updateFloatingLyricConfig({
+      playedColor: desktopLyricConfig.playedColor,
+      unplayedColor: desktopLyricConfig.unplayedColor,
+      shadowColor: desktopLyricConfig.shadowColor,
+      backgroundMaskColor: desktopLyricConfig.backgroundMaskColor,
+      textBackgroundMask: desktopLyricConfig.textBackgroundMask,
+      showTran: desktopLyricConfig.showTran,
+      showWordLyrics: desktopLyricConfig.showWordLyrics,
+      isDoubleLine: desktopLyricConfig.isDoubleLine,
+      animation: desktopLyricConfig.animation,
+      fontSize: desktopLyricConfig.fontSize,
+      fontWeight: desktopLyricConfig.fontWeight,
+      position: desktopLyricConfig.position as "left" | "center" | "right" | "both",
+      windowWidthPercent: desktopLyricConfig.windowWidthPercent,
+      windowHeightDp: desktopLyricConfig.windowHeightDp,
+    }).catch((e) => {
+      console.warn("[lyric] updateFloatingLyricConfig failed", e);
+    });
+  };
+
   const saveDesktopLyricConfig = () => {
     try {
+      if (isCapacitorAndroid) {
+        localStorage.setItem(ANDROID_LYRIC_CONFIG_KEY, JSON.stringify(desktopLyricConfig));
+        pushAndroidLyricConfig();
+        return;
+      }
       if (!isElectron) return;
       window.electron.ipcRenderer.send(
         "desktop-lyric:set-option",
@@ -54,6 +99,24 @@ export const useLyricSettings = (): SettingConfig => {
 
   const restoreDesktopLyricConfig = () => {
     try {
+      if (isCapacitorAndroid) {
+        window.$dialog.warning({
+          title: "警告",
+          content: "此操作将恢复所有桌面歌词配置为默认值，是否继续?",
+          positiveText: "确定",
+          negativeText: "取消",
+          onPositiveClick: () => {
+            Object.assign(desktopLyricConfig, defaultDesktopLyricConfig);
+            localStorage.setItem(
+              ANDROID_LYRIC_CONFIG_KEY,
+              JSON.stringify(defaultDesktopLyricConfig),
+            );
+            pushAndroidLyricConfig();
+            window.$message.success("桌面歌词配置已恢复默认");
+          },
+        });
+        return;
+      }
       if (!isElectron) return;
       window.$dialog.warning({
         title: "警告",
@@ -112,6 +175,8 @@ export const useLyricSettings = (): SettingConfig => {
       getDesktopLyricConfig();
       getTaskbarLyricConfig();
       await window.api.store.set("amllDbServer", settingStore.amllDbServer);
+    } else if (isCapacitorAndroid) {
+      await getDesktopLyricConfig();
     }
   };
 
@@ -745,9 +810,9 @@ export const useLyricSettings = (): SettingConfig => {
             label: "文字大小",
             type: "select",
             description: "翻译或其他文字将会跟随变化",
-            options: Array.from({ length: 96 - 20 + 1 }, (_, i) => ({
-              label: `${20 + i} px`,
-              value: 20 + i,
+            options: Array.from({ length: 96 - 10 + 1 }, (_, i) => ({
+              label: `${10 + i} px`,
+              value: 10 + i,
             })),
             value: computed({
               get: () => desktopLyricConfig.fontSize,
@@ -756,6 +821,44 @@ export const useLyricSettings = (): SettingConfig => {
                 saveDesktopLyricConfig();
               },
             }),
+          },
+          {
+            key: "desktopLyricWindowWidth",
+            label: "悬浮窗宽度",
+            type: "slider",
+            description: "占屏幕宽度的百分比 (Android 端生效)",
+            show: isCapacitorAndroid,
+            min: 30,
+            max: 100,
+            step: 1,
+            marks: { 92: "默认" },
+            formatTooltip: (v) => `${v}%`,
+            value: computed({
+              get: () => desktopLyricConfig.windowWidthPercent ?? 92,
+              set: (v) => {
+                desktopLyricConfig.windowWidthPercent = v;
+              },
+            }),
+            action: saveDesktopLyricConfig,
+          },
+          {
+            key: "desktopLyricWindowHeight",
+            label: "悬浮窗高度",
+            type: "slider",
+            description: "单位 dp (Android 端生效)",
+            show: isCapacitorAndroid,
+            min: 48,
+            max: 240,
+            step: 4,
+            marks: { 72: "默认" },
+            formatTooltip: (v) => `${v}dp`,
+            value: computed({
+              get: () => desktopLyricConfig.windowHeightDp ?? 72,
+              set: (v) => {
+                desktopLyricConfig.windowHeightDp = v;
+              },
+            }),
+            action: saveDesktopLyricConfig,
           },
           {
             key: "desktopLyricPlayedColor",
@@ -825,6 +928,7 @@ export const useLyricSettings = (): SettingConfig => {
             label: "始终展示播放信息",
             type: "switch",
             description: "是否始终展示当前歌曲名及歌手",
+            show: isElectron,
             value: computed({
               get: () => desktopLyricConfig.alwaysShowPlayInfo,
               set: (v) => {

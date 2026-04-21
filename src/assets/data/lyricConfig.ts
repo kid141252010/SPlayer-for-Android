@@ -17,6 +17,8 @@ const config: LyricConfig = {
   backgroundMaskColor: "rgba(0, 0, 0, 0.5)",
   alwaysShowPlayInfo: false,
   animation: true,
+  windowWidthPercent: 92,
+  windowHeightDp: 72,
 };
 
 export default config;

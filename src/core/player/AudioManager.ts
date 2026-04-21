@@ -1,7 +1,6 @@
 import { useSettingStore } from "@/stores";
-import { checkIsolationSupport, isCapacitorAndroid, isElectron } from "@/utils/env";
+import { checkIsolationSupport, isElectron } from "@/utils/env";
 import { TypedEventTarget } from "@/utils/TypedEventTarget";
-import { AndroidNativeAudioPlayer } from "../audio-player/AndroidNativeAudioPlayer";
 import { AudioElementPlayer } from "../audio-player/AudioElementPlayer";
 import { AUDIO_EVENTS, type AudioEventMap } from "../audio-player/BaseAudioPlayer";
 import { FFmpegAudioPlayer } from "../audio-player/ffmpeg-engine/FFmpegAudioPlayer";
@@ -44,12 +43,9 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     super();
 
     // 根据设置选择引擎
-    // Android 使用 AudioElementPlayer（HTML5 Audio）— seek 可靠；
-    // 后台续播通过前台服务 (PlaybackService) 保活，通知栏通过 syncRemoteState 同步。
-    if (isCapacitorAndroid) {
-      this.engine = new AudioElementPlayer();
-      this.engineType = "element";
-    } else if (isElectron && playbackEngine === "mpv") {
+    // Android：暂时回退到 HTMLAudioElement（AudioElementPlayer），
+    //   ExoPlayer 原生引擎的 seek 行为一直调不好，先保证可用。
+    if (isElectron && playbackEngine === "mpv") {
       const mpvPlayer = useMpvPlayer();
       mpvPlayer.init();
       this.engine = mpvPlayer;

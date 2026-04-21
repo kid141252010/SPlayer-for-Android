@@ -2,6 +2,11 @@
   "default": {
     "label": "default",
     "name": "默认",
+    "color": "#a1d3a9"
+  },
+  "coral": {
+    "label": "coral",
+    "name": "珊瑚红色",
     "color": "#fe7971"
   },
   "red": {

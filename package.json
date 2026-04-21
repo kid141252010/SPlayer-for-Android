@@ -1,15 +1,15 @@
 {
   "name": "splayer",
   "productName": "SPlayer for Android",
-  "version": "3.0.0-rc.1",
+  "version": "3.0.0-rc.2",
   "packageManager": "pnpm@10.28.1",
   "description": "Android-first SPlayer build with Capacitor and embedded local API",
   "main": "./out/main/index.js",
   "author": "imsyy",
   "home": "https://imsyy.top",
-  "github": "https://github.com/Re-BeiChen/SPlayer-for-Android",
+  "github": "https://github.com/SPlayer-Dev/SPlayer-for-Android",
   "blog": "https://blog.imsyy.top",
-  "repository": "github:Re-BeiChen/SPlayer-for-Android",
+  "repository": "github:SPlayer-Dev/SPlayer-for-Android",
   "license": "AGPL-3.0",
   "license-file": "LICENSE",
   "engines": {

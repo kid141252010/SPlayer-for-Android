@@ -471,5 +471,63 @@ watch(
       }
     }
   }
+  // 窄屏幕下缩小封面、减少右侧留白，避免歌手名被截断成两个字
+  @media (max-width: 768px) {
+    .detail {
+      height: 180px;
+      .cover {
+        margin-right: 14px;
+      }
+      .data {
+        padding-right: 12px;
+        min-width: 0;
+        .name {
+          font-size: 22px;
+          height: auto;
+          min-height: 30px;
+          &.text-hidden {
+            -webkit-line-clamp: 2;
+            line-clamp: 2;
+          }
+          .name-text {
+            word-break: break-word;
+          }
+        }
+        .identify {
+          font-size: 13px;
+        }
+        .collapse {
+          top: 36px;
+        }
+        .meta {
+          gap: 8px !important;
+          .item {
+            .n-icon {
+              font-size: 16px;
+            }
+          }
+        }
+        .menu {
+          .n-button {
+            height: 32px;
+            --n-font-size: 13px;
+            --n-padding: 0 12px;
+            --n-icon-size: 16px;
+          }
+          .more {
+            width: 32px;
+          }
+        }
+      }
+    }
+    .router-view.artist-songs {
+      padding-top: 210px;
+    }
+    &.small {
+      .router-view.artist-songs {
+        padding-top: 150px;
+      }
+    }
+  }
 }
 </style>

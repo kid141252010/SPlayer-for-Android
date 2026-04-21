@@ -55,7 +55,7 @@
           id="main-sider"
           :style="{
             height:
-              musicStore.isHasPlayer && statusStore.showPlayBar ? 'calc(100vh - 80px)' : '100vh',
+              musicStore.isHasPlayer && statusStore.showPlayBar ? 'calc(100dvh - 80px)' : '100dvh',
           }"
           :content-style="{
             overflow: 'hidden',
@@ -118,7 +118,7 @@
               <component v-else :is="Component" class="router-view" />
             </Transition>
           </RouterView>
-          <n-back-top :right="16" :bottom="84">
+          <n-back-top :right="16" :bottom="phoneBackTopBottom">
             <SvgIcon :size="22" name="Up" />
           </n-back-top>
         </main>
@@ -192,6 +192,16 @@ const activePhoneNav = computed(() => {
 const contentRef = ref<HTMLElement | null>(null);
 const { height: contentHeight } = useElementSize(contentRef);
 
+// 手机端"回到顶部"按钮的底部偏移，避开底部导航与播放条
+const phoneBackTopBottom = computed(() => {
+  const navHeight = 60; // mobile-bottom-nav 高度（含 padding）
+  const playerHeight = 80; // 播放条高度
+  const hasPlayer = musicStore.isHasPlayer && statusStore.showPlayBar;
+  // 基础偏移：导航栏之上 + 间距
+  const base = navHeight + 16;
+  return hasPlayer ? base + playerHeight : base;
+});
+
 const loadBackgroundImage = async () => {
   if (statusStore.backgroundImageUrl) return;
   if (statusStore.themeBackgroundMode === "image" || statusStore.themeBackgroundMode === "video") {
@@ -218,8 +228,22 @@ const navigatePhoneNav = (routeName: (typeof phoneNavItems)[number]["routeName"]
 
 useInit();
 
+// 横竖屏切换后强制刷新布局：触发 resize 事件帮助依赖视口尺寸的组件重新计算
+const handleOrientationChange = () => {
+  // 触发多次 resize 事件以覆盖不同时机：立即、动画中、完成后
+  const fire = () => window.dispatchEvent(new Event("resize"));
+  fire();
+  requestAnimationFrame(fire);
+  setTimeout(fire, 150);
+  setTimeout(fire, 400);
+};
+
 onMounted(() => {
   loadBackgroundImage();
+  window.addEventListener("orientationchange", handleOrientationChange);
+  // matchMedia 在部分设备上比 orientationchange 事件更可靠
+  const orientationMql = window.matchMedia("(orientation: portrait)");
+  orientationMql.addEventListener?.("change", handleOrientationChange);
   if (!isElectron) {
     window.addEventListener("beforeunload", (event) => {
       event.preventDefault();
@@ -227,6 +251,10 @@ onMounted(() => {
       event.returnValue = "";
     });
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("orientationchange", handleOrientationChange);
 });
 </script>
 

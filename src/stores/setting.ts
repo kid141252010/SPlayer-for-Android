@@ -211,6 +211,8 @@ export interface SettingState {
   smtcOpen: boolean;
   androidMediaControllerEnabled: boolean;
   androidMediaControllerDesktopLyricEnabled: boolean;
+  /** 允许与其他应用同时播放（不抢占音频焦点） */
+  androidAllowMixWithOthers: boolean;
   /** 歌词模糊 */
   lyricsBlur: boolean;
   /** 歌词混合模式 */
@@ -557,6 +559,7 @@ export const useSettingStore = defineStore("setting", {
     smtcOpen: true,
     androidMediaControllerEnabled: true,
     androidMediaControllerDesktopLyricEnabled: false,
+    androidAllowMixWithOthers: true,
     playSongDemo: false,
     scrobbleSong: false,
     dynamicCover: false,

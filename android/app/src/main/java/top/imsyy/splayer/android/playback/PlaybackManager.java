@@ -33,6 +33,8 @@ import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.extractor.DefaultExtractorsFactory;
 import androidx.media3.session.CommandButton;
 import androidx.media3.session.MediaSession;
 import androidx.media3.session.SessionCommand;
@@ -95,6 +97,8 @@ public final class PlaybackManager {
   private boolean controllerEnabled = true;
   private boolean desktopLyricButtonEnabled = false;
   private boolean desktopLyricEnabled = false;
+  /** 允许与其他应用同时播放（关闭时才请求音频焦点，抢占其他应用） */
+  private boolean allowMixWithOthers = true;
   private boolean canSkipPrevious = true;
   private boolean personalFmMode = false;
   private boolean repeatOneEnabled = false;
@@ -252,6 +256,8 @@ public final class PlaybackManager {
     ensureInitialized();
     ensureServiceRunning();
 
+    // ExoPlayer 直接驱动播放，退出 remote mode（JS 驱动模式）
+    remoteMode = false;
     currentSource = url == null ? "" : url;
     currentMetadata.url = currentSource;
     clearPendingSeek();
@@ -311,11 +317,20 @@ public final class PlaybackManager {
     ensureInitialized();
     long safePositionMs = Math.max(0L, positionMs);
     beginPendingSeek(safePositionMs);
-    boolean wasPlaying = player.getPlayWhenReady();
-    // 用 setMediaItem(item, startPos) 重新加载，确保 ExoPlayer 从正确位置准备
-    player.setMediaItem(buildMediaItem(currentSource), safePositionMs);
-    player.prepare();
-    player.setPlayWhenReady(wasPlaying);
+    remoteMode = false;
+
+    if (player.getCurrentMediaItem() == null
+        || currentSource == null
+        || currentSource.isEmpty()
+        || player.getPlaybackState() == Player.STATE_IDLE) {
+      boolean wasPlaying = player.getPlayWhenReady();
+      player.setMediaItem(buildMediaItem(currentSource), safePositionMs);
+      player.prepare();
+      player.setPlayWhenReady(wasPlaying);
+    } else {
+      player.seekTo(safePositionMs);
+    }
+
     updateNotification();
     emitPlaybackState(true);
     return buildState();
@@ -374,6 +389,24 @@ public final class PlaybackManager {
     desktopLyricButtonEnabled = desktopLyricButtonEnabledState;
     updateMediaSessionButtons();
     updateNotification();
+  }
+
+  /**
+   * 设置是否允许与其他应用同时播放。
+   * true：不请求音频焦点，允许与其他应用混音；
+   * false：由 ExoPlayer 独占音频焦点，开始播放会暂停其他应用。
+   */
+  public synchronized void setAllowMixWithOthers(boolean allow) {
+    if (allowMixWithOthers == allow) return;
+    allowMixWithOthers = allow;
+    if (player != null) {
+      player.setAudioAttributes(
+          new AudioAttributes.Builder()
+              .setUsage(C.USAGE_MEDIA)
+              .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+              .build(),
+          !allowMixWithOthers);
+    }
   }
 
   public synchronized void syncApiContext(String baseUrl, String cookieValue) {
@@ -549,13 +582,20 @@ public final class PlaybackManager {
 
     createNotificationChannel();
 
-    player = new ExoPlayer.Builder(appContext).build();
+    player = new ExoPlayer.Builder(appContext)
+        .setMediaSourceFactory(
+            new DefaultMediaSourceFactory(
+                appContext,
+                new DefaultExtractorsFactory()
+                    .setConstantBitrateSeekingEnabled(true)
+                    .setConstantBitrateSeekingAlwaysEnabled(true)))
+        .build();
     player.setAudioAttributes(
         new AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
             .build(),
-        true);
+        !allowMixWithOthers);
     player.setHandleAudioBecomingNoisy(true);
     player.addListener(
         new Player.Listener() {
@@ -1404,6 +1444,7 @@ public final class PlaybackManager {
   private String bufferedSongName = null, bufferedArtist = null;
   private long bufferedTimeMs = 0;
   private boolean bufferedPlaying = false;
+  private JSONObject bufferedLyricConfig = null;
 
   /** 开启悬浮歌词服务 */
   public synchronized void showFloatingLyric() {
@@ -1423,6 +1464,10 @@ public final class PlaybackManager {
   /** 服务启动时注册——立即回放缓冲数据 */
   public synchronized void attachFloatingLyricService(FloatingLyricService service) {
     floatingLyricService = service;
+    // 先应用配置再推数据
+    if (bufferedLyricConfig != null) {
+      service.applyConfig(bufferedLyricConfig);
+    }
     // 回放缓冲数据
     if (bufferedLrcJson != null || bufferedYrcJson != null) {
       service.pushLyrics(bufferedLrcJson, bufferedYrcJson);
@@ -1456,6 +1501,12 @@ public final class PlaybackManager {
     bufferedSongName = name;
     bufferedArtist = artist;
     if (floatingLyricService != null) floatingLyricService.pushSongInfo(name, artist);
+  }
+
+  /** 推送桌面歌词配置（颜色、字号、字重、遮罩等） */
+  public synchronized void updateFloatingLyricConfig(JSONObject config) {
+    bufferedLyricConfig = config;
+    if (floatingLyricService != null) floatingLyricService.applyConfig(config);
   }
 
   public synchronized boolean isFloatingLyricRunning() {

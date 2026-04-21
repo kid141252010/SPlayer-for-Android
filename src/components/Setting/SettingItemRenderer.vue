@@ -406,4 +406,26 @@ const activeActions = computed(() => {
     min-width: 140px;
   }
 }
+
+// 窄屏幕下让控件行切换为上下堆叠
+@media (max-width: 560px) {
+  :deep(.n-card__content) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .control-wrapper {
+    width: 100%;
+    justify-content: flex-start;
+    flex: 0 0 auto;
+  }
+  .set {
+    width: 100%;
+    min-width: 0;
+    &.n-switch {
+      width: max-content;
+      min-width: auto;
+    }
+  }
+}
 </style>

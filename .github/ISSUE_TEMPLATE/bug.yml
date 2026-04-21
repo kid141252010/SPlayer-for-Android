@@ -1,75 +1,147 @@
-name: 遇到问题
-description: 关于使用过程中遇到的问题
+name: 🐞 Bug 反馈
+description: 在 SPlayer for Android 使用中遇到的问题
+title: "[Bug] "
 labels: [bug]
 body:
   - type: markdown
     attributes:
       value: |
         ---
-        在此之前，我们默认你已经知道该如何提问。简而言之，**你要精确地描述问题并提供充足的信息**
+        感谢你愿意反馈问题！请先阅读以下注意事项，再按模板填写：
 
-        此外，如果需要，你可以使用 <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>I</kbd> 打开开发者工具为我们提供信息
+        - 请**优先在此提交 Issue**，而不是仅在 QQ 群中反馈，便于跟踪与修复
+        - **一个 Issue 只描述一个 Bug**，多个问题请分开提交
+        - 请在标题中**精炼描述问题**，不要只写「有 Bug」「闪退」之类的内容
+        - 请尽量提供能**稳定复现**的步骤，否则问题可能很难被定位
 
   - type: checkboxes
     validations:
-      required: false
+      required: true
     attributes:
       label: "检查清单"
-      description: |
-        我们需要了解一些信息，你需要检查下面的检查项 <br />
-        **这里并不是每一个检查项都必要，根据你的真实情况勾选即可**
+      description: 提交前请确认以下事项
       options:
-        - label: "我已检索仓库中所有的 Issues，确保我**没有重复提交问题**；或有相似 Issue，但我觉得我的情况不包含在那个相似 Issue 之内"
-        - label: "我已经找到了可以复现这个问题的方法，并且写在了下面的「具体信息」中"
-        - label: "此问题可以在我的设备和当前环境中**稳定复现**"
-        - label: "此问题可以在最新版本 (Latest Release) 中复现"
-        - label: "此问题是在我更新到当前版本后**才**出现的"
+        - label: "我已在 [Issues](../../issues?q=) 中搜索过，**没有重复提交**相同问题"
+          required: true
+        - label: "我使用的是 **SPlayer for Android**，而非桌面端 / Web 端上游 SPlayer"
+          required: true
+        - label: "我已在 [最新 Release](../../releases/latest) 版本中确认此问题仍然存在"
+          required: true
+        - label: "问题可在我的设备上**稳定复现**，且我已在下方给出复现步骤"
+
+  - type: input
+    id: app-version
+    validations:
+      required: true
+    attributes:
+      label: "应用版本"
+      description: |
+        见 **设置 → 关于软件** 中的版本号；若使用自行构建或 Actions 产物，请附上 Commit ID
+      placeholder: "如：v3.0.0-rc.2 / 构建自 commit 66c9aba9"
 
   - type: dropdown
+    id: abi
     validations:
       required: true
     attributes:
-      label: "是网页端还是客户端"
+      label: "APK 架构 (ABI)"
+      description: 从哪一份 APK 安装的？不确定时请在 Releases 文件名里确认
       options:
-        - "客户端"
-        - "网页端"
-      default: 0
+        - "arm64-v8a"
+        - "armeabi-v7a"
+        - "x86_64"
+        - "x86"
+        - "不确定 / 自行构建"
 
   - type: input
+    id: device
     validations:
       required: true
     attributes:
-      label: "当前系统环境"
-      placeholder: "如：Windows 11"
+      label: "设备型号"
+      placeholder: "如：Xiaomi 14 Pro / Pixel 8 / Redmi Pad SE"
 
   - type: input
+    id: android-version
+    validations:
+      required: true
+    attributes:
+      label: "Android 版本 / ROM"
+      description: 系统版本与 ROM（如 MIUI / ColorOS / HyperOS / 原生 Android 等）
+      placeholder: "如：Android 14 / HyperOS 1.0.6"
+
+  - type: input
+    id: webview-version
     validations:
       required: false
     attributes:
-      label: "当前 Node.js 及 npm 版本"
-      placeholder: "如：v18.16.0 / v9.6.7 (选填)"
+      label: "WebView 版本 (选填)"
+      description: |
+        播放器核心依赖 Android System WebView，版本过旧可能导致音频 / 歌词异常。
+        可在 **设置 → 应用 → Android System WebView** 查看版本号
+      placeholder: "如：Chrome 124.0.6367.82"
 
-  - type: input
+  - type: dropdown
+    id: category
     validations:
       required: true
     attributes:
-      label: "当前版本"
-      description: |
-        填写关于软件里的或 Releases 中版本号即可 <br />
-        如果是自行构建或从 GitHub Actions 下载的开发版，还需要提供 Commit ID
-      placeholder: "如：v1.0.0"
+      label: "问题分类"
+      multiple: true
+      options:
+        - "启动 / 闪退"
+        - "播放 / 音频"
+        - "歌词 / 桌面歌词"
+        - "通知栏 / 后台播放"
+        - "登录 / 账号"
+        - "在线音乐 (网易云 / Jellyfin / Navidrome / Emby / Subsonic / Last.fm)"
+        - "UI / 布局 / 主题"
+        - "本地音乐 / 存储权限"
+        - "设置项"
+        - "其他"
 
   - type: textarea
-    id: other
+    id: description
+    validations:
+      required: true
     attributes:
-      label: "具体信息"
+      label: "问题描述"
+      description: 清晰描述你遇到的现象，以及期望的正常行为
+      placeholder: |
+        现象：点击桌面歌词开关后应用立刻闪退
+        期望：开启桌面歌词并显示悬浮窗
+
+  - type: textarea
+    id: reproduce
+    validations:
+      required: true
+    attributes:
+      label: "复现步骤"
+      description: 请写出可复现的最小步骤
+      placeholder: |
+        1. 打开 SPlayer，开始播放任意歌曲
+        2. 进入 设置 → 歌词 → 桌面歌词 → 开启
+        3. 应用立即闪退回到桌面
+      value: |
+        1.
+        2.
+        3.
+
+  - type: textarea
+    id: logs
+    validations:
+      required: false
+    attributes:
+      label: "日志 / 报错 (选填但强烈建议)"
       description: |
-        请填写完整的复现步骤和遇到的问题，还请尽量提供所有可能的信息，提供包括但不限于：
+        - 闪退请提供 `adb logcat` 抓取的 crash 日志
+        - 界面类问题可尝试连接 Chrome DevTools (`chrome://inspect`) 抓取控制台报错
+      render: shell
 
-         - 分步的复现步骤，可以使用 `1. xxx` (换行) `2. xxx` 的格式
-         - 截图（如果结合复现步骤还是无法详细表述，甚至可以录屏）
-         - 开发者工具中的：控制台输出报错、网络请求等
-         - 出现问题的在线歌曲链接、出现问题的文件（本地歌曲、歌词等）的下载链接
-
-        等信息，以更好地帮助我们解决你的问题
-      placeholder: "请填写具体的复现步骤和遇到的问题"
+  - type: textarea
+    id: extra
+    validations:
+      required: false
+    attributes:
+      label: "截图 / 录屏 / 其他信息"
+      description: 可直接拖拽上传图片或视频；出现问题的在线歌曲链接、歌词 / 本地歌曲文件也请附上
