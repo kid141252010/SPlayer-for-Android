@@ -176,6 +176,5 @@ export interface AndroidNativePlaybackPlugin {
   removeAllListeners(): Promise<void>;
 }
 
-export const AndroidNativePlayback = registerPlugin<AndroidNativePlaybackPlugin>(
-  "AndroidNativePlayback",
-);
+export const AndroidNativePlayback =
+  registerPlugin<AndroidNativePlaybackPlugin>("AndroidNativePlayback");
