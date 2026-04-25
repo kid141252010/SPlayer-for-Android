@@ -59,7 +59,7 @@
           >
             <n-flex justify="space-between" align="center" style="width: 100%" :wrap="false">
               <div class="directory-info">
-                <n-text class="name">已授权目录 {{ index + 1 }}</n-text>
+                <n-text class="name">{{ getAndroidDirectoryDisplayName(directory, index) }}</n-text>
               </div>
               <n-button
                 strong
@@ -127,6 +127,23 @@ const scanTimeText = computed(() =>
     ? new Date(androidScanMeta.value.lastScanAt).toLocaleString()
     : "未扫描",
 );
+
+const getLastNameSegment = (value: string) => {
+  let name = value.trim();
+  try {
+    name = decodeURIComponent(name);
+  } catch {
+    // 保留原始名称
+  }
+  const cleanName = name.split(/[?#]/)[0];
+  const slashSegment = cleanName.split(/[\\/]/).filter(Boolean).at(-1) || cleanName;
+  return slashSegment.split(":").filter(Boolean).at(-1)?.trim() || "";
+};
+
+const getAndroidDirectoryDisplayName = (directory: AndroidLyricDirectory, index: number) => {
+  const name = getLastNameSegment(directory.name || directory.uri || "");
+  return name || `歌词目录 ${index + 1}`;
+};
 
 const resetAndroidLyricIndex = () => {
   settingStore.androidLyricIndexMap = {};
