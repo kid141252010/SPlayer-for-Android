@@ -189,13 +189,13 @@ const loadAllData = async () => {
     // 并行加载所有数据
     const [playlistRes, albumRes, artistRes, videoRes] = await Promise.all([
       // 推荐歌单
-      personalized(isLogin() ? 21 : 20).catch(() => ({ result: [] })),
+      personalized("playlist", isLogin() ? 21 : 20).catch(() => ({ result: [] })),
       // 新碟上架
       newAlbumsAll().catch(() => ({ albums: [] })),
       // 歌手推荐
       topArtists(6).catch(() => ({ artists: [] })),
       // 推荐 MV
-      allMv().catch(() => ({ data: [] })),
+      allMv("全部", "全部", "上升最快").catch(() => ({ data: [] })),
     ]);
 
     // 处理歌单数据

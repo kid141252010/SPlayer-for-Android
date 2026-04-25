@@ -32,11 +32,11 @@ interface Window {
   electron?: {
     ipcRenderer: {
       send: (channel: string, ...args: unknown[]) => void;
-      sendSync: (channel: string, ...args: unknown[]) => unknown;
-      invoke: <T = unknown>(channel: string, ...args: unknown[]) => Promise<T>;
-      on: (channel: string, listener: (...args: unknown[]) => void) => void;
+      sendSync: (channel: string, ...args: unknown[]) => any;
+      invoke: <T = any>(channel: string, ...args: unknown[]) => Promise<T>;
+      on: (channel: string, listener: (...args: any[]) => void) => void;
       removeAllListeners: (channel: string) => void;
-      removeListener: (channel: string, listener: (...args: unknown[]) => void) => void;
+      removeListener: (channel: string, listener: (...args: any[]) => void) => void;
     };
   };
 }

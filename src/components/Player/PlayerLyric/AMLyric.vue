@@ -48,10 +48,8 @@
           ...lyricLangFontStyle(settingStore),
         }"
         class="am-lyric"
-        @touchstart.capture="handleAmlTouchStart"
-        @touchend.capture="handleAmlTouchEnd"
-        @touchcancel.capture="resetAmlTouch"
         @line-click="jumpSeek"
+        @line-tap="jumpSeekByLine"
       />
     </div>
   </Transition>
@@ -80,21 +78,11 @@ const settingStore = useSettingStore();
 const player = usePlayerController();
 
 const lyricPlayerRef = ref<any | null>(null);
-type AmlLyricLineObject = {
-  getLine: () => LyricLine;
-  getElement?: () => HTMLElement;
-  element?: HTMLElement;
+type AmlLyricLineEvent = {
+  line: {
+    getLine: () => LyricLine;
+  };
 };
-
-const amlTouchStart = ref<{
-  x: number;
-  y: number;
-  time: number;
-  lyricTime: number;
-} | null>(null);
-
-const TAP_MOVE_TOLERANCE = 12;
-const TAP_MAX_DURATION = 500;
 
 const effectiveLyricsScrollOffset = computed(() =>
   isCapacitorAndroid
@@ -149,57 +137,9 @@ const jumpSeek = (line: LyricLineMouseEvent) => {
   seekToLyricTime(line.line.getLine()?.startTime);
 };
 
-const getAmlLineObjects = (): AmlLyricLineObject[] => {
-  const exposedPlayer = lyricPlayerRef.value?.lyricPlayer;
-  const lyricPlayer = exposedPlayer?.value ?? exposedPlayer;
-  const lineObjects = lyricPlayer?.currentLyricLineObjects;
-  return Array.isArray(lineObjects) ? lineObjects : [];
-};
-
-const getAmlLineElement = (lineObject: AmlLyricLineObject): HTMLElement | undefined =>
-  lineObject.getElement?.() ?? lineObject.element;
-
-const getAmlLineByEvent = (event: TouchEvent): AmlLyricLineObject | null => {
-  if (!(event.target instanceof Node)) return null;
-  const target = event.target;
-  return (
-    getAmlLineObjects().find((lineObject) => getAmlLineElement(lineObject)?.contains(target)) ??
-    null
-  );
-};
-
-const resetAmlTouch = () => {
-  amlTouchStart.value = null;
-};
-
-const handleAmlTouchStart = (event: TouchEvent) => {
-  if (!isCapacitorAndroid || event.touches.length !== 1) return;
-  const lineObject = getAmlLineByEvent(event);
-  const lyricTime = lineObject?.getLine()?.startTime;
-  if (typeof lyricTime !== "number" || !Number.isFinite(lyricTime)) return;
-  const point = event.touches[0];
-  amlTouchStart.value = {
-    x: point.clientX,
-    y: point.clientY,
-    time: Date.now(),
-    lyricTime,
-  };
-};
-
-const handleAmlTouchEnd = (event: TouchEvent) => {
+const jumpSeekByLine = (line: AmlLyricLineEvent) => {
   if (!isCapacitorAndroid) return;
-  const touchStart = amlTouchStart.value;
-  resetAmlTouch();
-  const point = event.changedTouches[0];
-  if (!touchStart || !point) return;
-
-  const moved = Math.hypot(point.clientX - touchStart.x, point.clientY - touchStart.y);
-  const duration = Date.now() - touchStart.time;
-  if (moved > TAP_MOVE_TOLERANCE || duration > TAP_MAX_DURATION) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  seekToLyricTime(touchStart.lyricTime);
+  seekToLyricTime(line.line.getLine()?.startTime);
 };
 
 // 处理歌词语言
