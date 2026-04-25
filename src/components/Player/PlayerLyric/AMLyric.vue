@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { LyricLineMouseEvent, type LyricLine } from "@applemusic-like-lyrics/core";
+import type { LyricLineMouseEvent, LyricLine } from "@applemusic-like-lyrics/core";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
@@ -123,20 +123,37 @@ const amLyricsData = computed(() => {
 // 是否有对唱行
 const hasDuet = computed(() => amLyricsData.value?.some((line) => line.isDuet) ?? false);
 
-const seekToLyricTime = (time: number | undefined) => {
-  if (typeof time !== "number" || !Number.isFinite(time)) return;
+const isValidLyricTime = (time: unknown): time is number =>
+  typeof time === "number" && Number.isFinite(time) && time >= 0;
+
+// 获取原始歌词行的真实发声时间
+const getLineSeekTime = (line?: LyricLine) => {
+  const firstWordStartTime = line?.words?.find(
+    (word) => word.word?.trim() && isValidLyricTime(word.startTime),
+  )?.startTime;
+
+  if (isValidLyricTime(firstWordStartTime)) return firstWordStartTime;
+  if (isValidLyricTime(line?.startTime)) return line.startTime;
+  return null;
+};
+
+const seekToLyricTime = (time: number | null | undefined) => {
+  if (!isValidLyricTime(time)) return;
+
   const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
   player.setSeek(time - offsetMs);
   player.play();
 };
 
 const seekToOriginalLyricLine = (lineIndex: number) => {
-  seekToLyricTime(amLyricsData.value[lineIndex]?.startTime);
+  seekToLyricTime(getLineSeekTime(amLyricsData.value[lineIndex]));
 };
 
 // 进度跳转
-const jumpSeek = (line: LyricLineMouseEvent) => {
-  seekToOriginalLyricLine(line.lineIndex);
+const jumpSeek = (event: LyricLineMouseEvent) => {
+  const originalLine = amLyricsData.value[event.lineIndex];
+  const eventLine = event.line.getLine();
+  seekToLyricTime(getLineSeekTime(originalLine) ?? getLineSeekTime(eventLine));
 };
 
 const jumpSeekByLine = (line: AmlLyricLineEvent) => {
