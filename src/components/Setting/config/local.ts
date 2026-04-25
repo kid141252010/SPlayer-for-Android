@@ -3,6 +3,7 @@ import { useCacheManager } from "@/core/resource/CacheManager";
 import { formatFileSize } from "@/utils/helper";
 import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
 import { SettingConfig } from "@/types/settings";
+import { isElectron } from "@/utils/env";
 import { openLocalMusicDirectoryModal } from "@/utils/modal";
 import { pick } from "lodash-es";
 import LocalLyricDirectories from "../components/LocalLyricDirectories.vue";
@@ -240,6 +241,7 @@ export const useLocalSettings = (): SettingConfig => {
             label: "本地歌词覆盖在线歌词",
             type: "custom",
             noWrapper: true,
+            show: isElectron,
             component: markRaw(LocalLyricDirectories),
           },
         ],

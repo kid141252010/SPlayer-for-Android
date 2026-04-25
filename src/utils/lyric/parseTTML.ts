@@ -15,6 +15,27 @@ export type TtmlBgExtractResult = {
 };
 
 /**
+ * 提取网易云歌曲 ID
+ * @param ttml TTML 文本
+ * @returns 歌曲 ID
+ */
+export const extractNcmMusicIdFromTTML = (ttml: string): string | null => {
+  const metaRegex = /<\s*amll:meta\b[^>]*>/gi;
+  const attrRegex = (name: string) => new RegExp(`\\b${name}\\s*=\\s*(['"])(.*?)\\1`, "i");
+  let match: RegExpExecArray | null;
+
+  while ((match = metaRegex.exec(ttml)) !== null) {
+    const tag = match[0];
+    const key = tag.match(attrRegex("key"))?.[2];
+    if (key !== "ncmMusicId") continue;
+    const value = tag.match(attrRegex("value"))?.[2]?.trim();
+    return value || null;
+  }
+
+  return null;
+};
+
+/**
  * 将 TTML 时间转换为毫秒
  * @param raw 原始时间字符串
  * @returns 毫秒
