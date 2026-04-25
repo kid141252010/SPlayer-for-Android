@@ -28,7 +28,7 @@
         v-else
         ref="lyricPlayerRef"
         :lyricLines="amLyricsData"
-        :currentTime="currentTime"
+        :currentTime="amllDisplayTime"
         :playing="statusStore.playStatus"
         :enableSpring="settingStore.useAMSpring"
         :enableScale="settingStore.useAMSpring"
@@ -65,7 +65,7 @@ import { isCapacitorAndroid } from "@/utils/env";
 import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
 import { getFontSize } from "@/utils/style";
 
-defineProps({
+const props = defineProps({
   currentTime: {
     type: Number,
     default: 0,
@@ -80,7 +80,12 @@ const player = usePlayerController();
 const lyricPlayerRef = ref<any | null>(null);
 type AmlLyricLineEvent = {
   lineIndex: number;
+  line: {
+    getLine: () => LyricLine;
+  };
 };
+
+const AMLL_SEEK_COMPENSATION_DURATION = 300;
 
 const effectiveLyricsScrollOffset = computed(() =>
   isCapacitorAndroid
@@ -123,6 +128,29 @@ const amLyricsData = computed(() => {
 // 是否有对唱行
 const hasDuet = computed(() => amLyricsData.value?.some((line) => line.isDuet) ?? false);
 
+const amllSeekCompensation = ref<{
+  advanceMs: number;
+  startedAt: number;
+  durationMs: number;
+} | null>(null);
+
+const amllDisplayTime = computed(() => {
+  const compensation = amllSeekCompensation.value;
+  if (!compensation) return props.currentTime;
+
+  const elapsed = Date.now() - compensation.startedAt;
+  if (
+    !Number.isFinite(compensation.advanceMs) ||
+    compensation.advanceMs <= 0 ||
+    elapsed >= compensation.durationMs
+  ) {
+    return props.currentTime;
+  }
+
+  const progress = Math.max(0, Math.min(1, elapsed / compensation.durationMs));
+  return props.currentTime - compensation.advanceMs * (1 - progress);
+});
+
 const isValidLyricTime = (time: unknown): time is number =>
   typeof time === "number" && Number.isFinite(time) && time >= 0;
 
@@ -137,6 +165,8 @@ const getLineSeekTime = (line?: LyricLine) => {
   return null;
 };
 
+const getOriginalLyricTime = (lineIndex: number) => getLineSeekTime(amLyricsData.value[lineIndex]);
+
 const seekToLyricTime = (time: number | null | undefined) => {
   if (!isValidLyricTime(time)) return;
 
@@ -146,7 +176,26 @@ const seekToLyricTime = (time: number | null | undefined) => {
 };
 
 const seekToOriginalLyricLine = (lineIndex: number) => {
-  seekToLyricTime(getLineSeekTime(amLyricsData.value[lineIndex]));
+  seekToLyricTime(getOriginalLyricTime(lineIndex));
+};
+
+const startAmlSeekCompensation = (line: AmlLyricLineEvent) => {
+  const originalTime = getOriginalLyricTime(line.lineIndex);
+  const amllTime = getLineSeekTime(line.line.getLine());
+  if (!isValidLyricTime(originalTime) || !isValidLyricTime(amllTime)) {
+    amllSeekCompensation.value = null;
+    return;
+  }
+
+  const advanceMs = originalTime - amllTime;
+  amllSeekCompensation.value =
+    advanceMs > 0
+      ? {
+          advanceMs,
+          startedAt: Date.now(),
+          durationMs: AMLL_SEEK_COMPENSATION_DURATION,
+        }
+      : null;
 };
 
 // 进度跳转
@@ -158,6 +207,7 @@ const jumpSeek = (event: LyricLineMouseEvent) => {
 
 const jumpSeekByLine = (line: AmlLyricLineEvent) => {
   if (!isCapacitorAndroid) return;
+  startAmlSeekCompensation(line);
   seekToOriginalLyricLine(line.lineIndex);
 };
 
