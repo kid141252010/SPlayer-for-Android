@@ -119,11 +119,27 @@ const amLyricsData = computed(() => {
 // 是否有对唱行
 const hasDuet = computed(() => amLyricsData.value?.some((line) => line.isDuet) ?? false);
 
+const isValidLyricTime = (time: unknown): time is number =>
+  typeof time === "number" && Number.isFinite(time) && time >= 0;
+
+// 获取原始歌词行的真实发声时间
+const getLineSeekTime = (line?: LyricLine) => {
+  const firstWordStartTime = line?.words?.find(
+    (word) => word.word?.trim() && isValidLyricTime(word.startTime),
+  )?.startTime;
+
+  if (isValidLyricTime(firstWordStartTime)) return firstWordStartTime;
+  if (isValidLyricTime(line?.startTime)) return line.startTime;
+  return null;
+};
+
 // 进度跳转
-const jumpSeek = (line: LyricLineMouseEvent) => {
-  const lineContent = line.line.getLine();
-  if (!lineContent?.startTime) return;
-  const time = lineContent.startTime;
+const jumpSeek = (event: LyricLineMouseEvent) => {
+  const originalLine = amLyricsData.value[event.lineIndex];
+  const eventLine = event.line.getLine();
+  const time = getLineSeekTime(originalLine) ?? getLineSeekTime(eventLine);
+  if (time === null) return;
+
   const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
   player.setSeek(time - offsetMs);
   player.play();
