@@ -54,7 +54,7 @@ export interface AndroidNativeApiContextPayload {
   cookie: string;
 }
 
-export interface AndroidNativePlaybackStateEvent extends AndroidNativePlaybackState {}
+export type AndroidNativePlaybackStateEvent = AndroidNativePlaybackState;
 
 export interface AndroidNativeProgressEvent {
   durationMs: number;
@@ -176,6 +176,5 @@ export interface AndroidNativePlaybackPlugin {
   removeAllListeners(): Promise<void>;
 }
 
-export const AndroidNativePlayback = registerPlugin<AndroidNativePlaybackPlugin>(
-  "AndroidNativePlayback",
-);
+export const AndroidNativePlayback =
+  registerPlugin<AndroidNativePlaybackPlugin>("AndroidNativePlayback");

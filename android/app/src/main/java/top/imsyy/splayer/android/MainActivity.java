@@ -7,12 +7,14 @@ import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
+import top.imsyy.splayer.android.lyric.AndroidLocalLyricPlugin;
 import top.imsyy.splayer.android.playback.AndroidNativePlaybackPlugin;
 
 public class MainActivity extends BridgeActivity {
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     registerPlugin(AndroidNativePlaybackPlugin.class);
+    registerPlugin(AndroidLocalLyricPlugin.class);
     super.onCreate(savedInstanceState);
     applyImmersiveMode();
   }
