@@ -49,6 +49,7 @@
         }"
         class="am-lyric"
         @line-click="jumpSeek"
+        @line-tap="jumpSeekByLine"
       />
     </div>
   </Transition>
@@ -77,6 +78,9 @@ const settingStore = useSettingStore();
 const player = usePlayerController();
 
 const lyricPlayerRef = ref<any | null>(null);
+type AmlLyricLineEvent = {
+  lineIndex: number;
+};
 
 const effectiveLyricsScrollOffset = computed(() =>
   isCapacitorAndroid
@@ -119,14 +123,25 @@ const amLyricsData = computed(() => {
 // 是否有对唱行
 const hasDuet = computed(() => amLyricsData.value?.some((line) => line.isDuet) ?? false);
 
-// 进度跳转
-const jumpSeek = (line: LyricLineMouseEvent) => {
-  const lineContent = line.line.getLine();
-  if (!lineContent?.startTime) return;
-  const time = lineContent.startTime;
+const seekToLyricTime = (time: number | undefined) => {
+  if (typeof time !== "number" || !Number.isFinite(time)) return;
   const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
   player.setSeek(time - offsetMs);
   player.play();
+};
+
+const seekToOriginalLyricLine = (lineIndex: number) => {
+  seekToLyricTime(amLyricsData.value[lineIndex]?.startTime);
+};
+
+// 进度跳转
+const jumpSeek = (line: LyricLineMouseEvent) => {
+  seekToOriginalLyricLine(line.lineIndex);
+};
+
+const jumpSeekByLine = (line: AmlLyricLineEvent) => {
+  if (!isCapacitorAndroid) return;
+  seekToOriginalLyricLine(line.lineIndex);
 };
 
 // 处理歌词语言

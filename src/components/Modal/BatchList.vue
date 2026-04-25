@@ -146,7 +146,7 @@ const startRange = ref<number | null>(null);
 const endRange = ref<number | null>(null);
 
 // 表头数据
-const columnsData = computed<DataTableColumns<DataType>>(() => [
+const columnsData: DataTableColumns<DataType> = [
   {
     type: "selection",
     disabled(row: DataType) {
@@ -179,7 +179,7 @@ const columnsData = computed<DataTableColumns<DataType>>(() => [
       tooltip: true,
     },
   },
-]);
+];
 
 // 表格数据
 const tableData = computed<DataType[]>(() =>

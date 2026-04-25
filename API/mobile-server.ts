@@ -148,7 +148,7 @@ const handleNeteaseRoute = async (
   response: ServerResponse,
 ) => {
   if (pathname === "/api/netease") {
-    sendJson(response, 200, {
+    sendJson(request, response, 200, {
       name: "@neteasecloudmusicapienhanced/api",
       description: "NeteaseCloudMusicApi Enhanced",
       url: "https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced",
@@ -159,7 +159,7 @@ const handleNeteaseRoute = async (
   if (pathname === "/api/netease/lyric/ttml") {
     const id = String(query.id || "");
     if (!id) {
-      sendJson(response, 400, { error: "id is required" });
+      sendJson(request, response, 400, { error: "id is required" });
       return;
     }
 
