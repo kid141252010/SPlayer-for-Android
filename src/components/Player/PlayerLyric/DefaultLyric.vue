@@ -557,8 +557,7 @@ const jumpSeek = (time: number) => {
     clearTimeout(userScrollTimeoutId);
     userScrollTimeoutId = null;
   }
-  const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
-  player.setSeek(time - offsetMs);
+  player.setSeek(time);
   player.play();
 };
 

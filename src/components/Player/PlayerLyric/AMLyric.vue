@@ -169,9 +169,7 @@ const getOriginalLyricTime = (lineIndex: number) => getLineSeekTime(amLyricsData
 
 const seekToLyricTime = (time: number | null | undefined) => {
   if (!isValidLyricTime(time)) return;
-
-  const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
-  player.setSeek(time - offsetMs);
+  player.setSeek(time);
   player.play();
 };
 
