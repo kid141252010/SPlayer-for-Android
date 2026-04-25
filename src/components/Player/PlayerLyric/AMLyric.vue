@@ -79,9 +79,7 @@ const player = usePlayerController();
 
 const lyricPlayerRef = ref<any | null>(null);
 type AmlLyricLineEvent = {
-  line: {
-    getLine: () => LyricLine;
-  };
+  lineIndex: number;
 };
 
 const effectiveLyricsScrollOffset = computed(() =>
@@ -132,14 +130,18 @@ const seekToLyricTime = (time: number | undefined) => {
   player.play();
 };
 
+const seekToOriginalLyricLine = (lineIndex: number) => {
+  seekToLyricTime(amLyricsData.value[lineIndex]?.startTime);
+};
+
 // 进度跳转
 const jumpSeek = (line: LyricLineMouseEvent) => {
-  seekToLyricTime(line.line.getLine()?.startTime);
+  seekToOriginalLyricLine(line.lineIndex);
 };
 
 const jumpSeekByLine = (line: AmlLyricLineEvent) => {
   if (!isCapacitorAndroid) return;
-  seekToLyricTime(line.line.getLine()?.startTime);
+  seekToOriginalLyricLine(line.lineIndex);
 };
 
 // 处理歌词语言

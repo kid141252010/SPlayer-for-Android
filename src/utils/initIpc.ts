@@ -24,6 +24,9 @@ const initIpc = () => {
     if (!isElectron) return;
     const player = usePlayerController();
     const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
+    const getLyricOffset = () =>
+      settingStore.lyricGlobalOffset + statusStore.getSongOffset(useMusicStore().playSong?.id);
 
     // 播放
     window.electron.ipcRenderer.on("play", () => player.play());
@@ -121,7 +124,7 @@ const initIpc = () => {
             tick: [
               statusStore.currentTime,
               statusStore.duration,
-              statusStore.getSongOffset(musicStore.playSong?.id),
+              getLyricOffset(),
             ],
           },
           config: configPayload,
@@ -133,7 +136,7 @@ const initIpc = () => {
       window.electron.ipcRenderer.send("mac-statusbar:update-progress", {
         currentTime: statusStore.currentTime,
         duration: statusStore.duration,
-        offset: statusStore.getSongOffset(musicStore.playSong?.id),
+        offset: getLyricOffset(),
       });
       // 发送封面颜色
       sendTaskbarCoverColor();
@@ -153,7 +156,7 @@ const initIpc = () => {
             artistName: artist,
             currentTime: statusStore.currentTime,
             songId: musicStore.playSong?.id,
-            songOffset: statusStore.getSongOffset(musicStore.playSong?.id),
+            songOffset: getLyricOffset(),
             lrcData: musicStore.songLyric.lrcData ?? [],
             yrcData: musicStore.songLyric.yrcData ?? [],
             lyricIndex: statusStore.lyricIndex,

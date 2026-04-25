@@ -213,6 +213,7 @@ export const settingMigrations: Record<number, MigrationFunction> = {
         duplicateIds: 0,
         failedFiles: 0,
       },
+      lyricGlobalOffset: 0,
     };
   },
 };
