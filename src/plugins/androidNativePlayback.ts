@@ -54,7 +54,7 @@ export interface AndroidNativeApiContextPayload {
   cookie: string;
 }
 
-export interface AndroidNativePlaybackStateEvent extends AndroidNativePlaybackState {}
+export type AndroidNativePlaybackStateEvent = AndroidNativePlaybackState;
 
 export interface AndroidNativeProgressEvent {
   durationMs: number;

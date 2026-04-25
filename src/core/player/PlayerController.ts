@@ -1820,7 +1820,9 @@ class PlayerController {
           window.$message.warning("请先授予悬浮窗权限");
           try {
             await AndroidNativePlayback.requestOverlayPermission();
-          } catch {}
+          } catch (error) {
+            console.warn("打开悬浮窗权限设置失败:", error);
+          }
           return;
         }
       }
