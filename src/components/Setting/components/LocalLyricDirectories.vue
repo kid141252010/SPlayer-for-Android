@@ -243,8 +243,13 @@ const addDirectory = async () => {
 
 .directory-list {
   margin-top: 12px;
+  overflow: hidden;
   border-radius: 8px;
   background-color: rgba(var(--primary), 0.05);
+
+  :deep(.n-list-item) {
+    padding: 10px 12px;
+  }
 }
 
 .directory-info {
@@ -252,5 +257,11 @@ const addDirectory = async () => {
   min-width: 0;
   flex: 1;
   flex-direction: column;
+
+  .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 </style>
