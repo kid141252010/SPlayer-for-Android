@@ -6,7 +6,7 @@ import type { SettingState } from "../setting";
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 13;
+export const CURRENT_SETTING_SCHEMA_VERSION = 14;
 
 /**
  * 迁移函数类型
@@ -200,6 +200,11 @@ export const settingMigrations: Record<number, MigrationFunction> = {
   13: () => {
     return {
       androidAllowMixWithOthers: true,
+    };
+  },
+  14: () => {
+    return {
+      lyricGlobalOffset: 0,
     };
   },
 };
