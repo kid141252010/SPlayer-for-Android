@@ -5,8 +5,8 @@
         <n-text class="name">{{ item?.label || "本地歌词覆盖在线歌词" }}</n-text>
         <n-text class="tip" :depth="3" v-if="item?.description" v-html="item.description" />
         <n-text class="tip" :depth="3" v-else-if="isCapacitorAndroid">
-          选择保存 TTML 的目录，扫描后会通过 metadata ncmMusicId 绑定网易云歌曲 <br />
-          仅对有网易云 ID 的歌曲生效，添加目录后会自动扫描
+          选择 TTML 歌词目录，按文件元数据里的网易云 ID 匹配歌曲 <br />
+          添加后会自动扫描
         </n-text>
         <n-text class="tip" :depth="3" v-else>
           可在这些文件夹及其子文件夹内覆盖在线歌曲的歌词 <br />
@@ -59,8 +59,7 @@
           >
             <n-flex justify="space-between" align="center" style="width: 100%" :wrap="false">
               <div class="directory-info">
-                <n-text class="name">{{ directory.name }}</n-text>
-                <n-text class="directory-uri" :depth="3">{{ directory.uri }}</n-text>
+                <n-text class="name">已授权目录 {{ index + 1 }}</n-text>
               </div>
               <n-button
                 strong
@@ -236,12 +235,5 @@ const addDirectory = async () => {
   min-width: 0;
   flex: 1;
   flex-direction: column;
-  gap: 4px;
-}
-
-.directory-uri {
-  overflow-wrap: anywhere;
-  font-size: 12px;
-  line-height: 1.4;
 }
 </style>
