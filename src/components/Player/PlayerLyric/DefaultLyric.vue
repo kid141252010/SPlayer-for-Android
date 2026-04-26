@@ -543,7 +543,13 @@ const handleLyricTouchEnd = (event: TouchEvent, time: number) => {
 
   event.preventDefault();
   event.stopPropagation();
-  jumpSeek(time);
+  jumpTouchSeek(time);
+};
+
+const jumpTouchSeek = (time: number) => {
+  if (!Number.isFinite(time)) return;
+  // 触控 seek 试用一半全局歌词偏移反推播放时间
+  jumpSeek(time - settingStore.lyricGlobalOffset / 2);
 };
 
 /**
@@ -557,7 +563,7 @@ const jumpSeek = (time: number) => {
     clearTimeout(userScrollTimeoutId);
     userScrollTimeoutId = null;
   }
-  // 播放跳转只使用原始歌词时间，不叠加任何歌词偏移
+  // 桌面点击仍使用原始歌词时间
   player.setSeek(time);
   player.play();
 };

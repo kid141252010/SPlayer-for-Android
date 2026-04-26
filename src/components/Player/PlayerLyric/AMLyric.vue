@@ -163,8 +163,7 @@ const amllDisplayTime = computed(() => {
   return props.currentTime - compensation.advanceMs;
 });
 
-const getOriginalLyricTime = (lineIndex: number) =>
-  getLineSeekTime(amLyricsData.value[lineIndex]);
+const getOriginalLyricTime = (lineIndex: number) => getLineSeekTime(amLyricsData.value[lineIndex]);
 const getOriginalLyricEndTime = (lineIndex: number) => {
   const line = amLyricsData.value[lineIndex];
   if (!Number.isFinite(line?.startTime)) return undefined;
@@ -172,7 +171,10 @@ const getOriginalLyricEndTime = (lineIndex: number) => {
     return line?.endTime;
   }
   const nextLine = amLyricsData.value[lineIndex + 1];
-  if (Number.isFinite(nextLine?.startTime) && Number(nextLine?.startTime) > Number(line?.startTime)) {
+  if (
+    Number.isFinite(nextLine?.startTime) &&
+    Number(nextLine?.startTime) > Number(line?.startTime)
+  ) {
     return nextLine?.startTime;
   }
   // 末行无结束时间时，补偿持续到歌曲结束
@@ -183,6 +185,13 @@ const seekToOriginalPlaybackTime = (time: number | undefined) => {
   if (typeof time !== "number" || !Number.isFinite(time)) return;
   // 播放跳转只使用原始歌词时间，不叠加歌词偏移或 AMLL 提前时间
   player.setSeek(time);
+  player.play();
+};
+
+const seekToTouchPlaybackTime = (time: number | undefined) => {
+  if (typeof time !== "number" || !Number.isFinite(time)) return;
+  // 触控 seek 试用一半全局歌词偏移反推播放时间
+  player.setSeek(time - settingStore.lyricGlobalOffset / 2);
   player.play();
 };
 
@@ -225,7 +234,7 @@ const jumpSeek = (event: LyricLineMouseEvent) => {
 const jumpSeekByLine = (line: AmlLyricLineEvent) => {
   if (!isCapacitorAndroid) return;
   startAmlSeekCompensation(line);
-  seekToOriginalLyricLine(line.lineIndex);
+  seekToTouchPlaybackTime(getOriginalLyricTime(line.lineIndex));
 };
 
 // 处理歌词语言
