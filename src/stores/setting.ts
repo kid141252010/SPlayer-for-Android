@@ -6,6 +6,11 @@ import { defineStore } from "pinia";
 import { CURRENT_SETTING_SCHEMA_VERSION, settingMigrations } from "./migrations/settingMigrations";
 import { ThemeColorType } from "@/types/color";
 import type { LyricPriority } from "@/types/lyric";
+import type {
+  AndroidLyricDirectory,
+  AndroidLyricIndexEntry,
+  AndroidLyricScanMeta,
+} from "@/plugins/androidLocalLyric";
 
 export interface SettingState {
   /** Schema 版本号 */
@@ -254,6 +259,12 @@ export interface SettingState {
   localFilesPath: string[];
   /** 本地歌词路径 */
   localLyricPath: string[];
+  /** Android 本地歌词目录 */
+  androidLyricDirectories: AndroidLyricDirectory[];
+  /** Android 本地歌词索引 */
+  androidLyricIndexMap: Record<string, AndroidLyricIndexEntry>;
+  /** Android 本地歌词扫描信息 */
+  androidLyricScanMeta: AndroidLyricScanMeta;
   /** 本地文件分隔符 */
   localSeparators: string[];
   /** 显示本地封面 */
@@ -609,6 +620,15 @@ export const useSettingStore = defineStore("setting", {
     excludeCommentRegexes: [],
     localFilesPath: [],
     localLyricPath: [],
+    androidLyricDirectories: [],
+    androidLyricIndexMap: {},
+    androidLyricScanMeta: {
+      lastScanAt: 0,
+      totalFiles: 0,
+      matchedFiles: 0,
+      duplicateIds: 0,
+      failedFiles: 0,
+    },
     showDefaultLocalPath: true,
     localFolderDisplayMode: "tab",
     localSeparators: ["/", "&"],

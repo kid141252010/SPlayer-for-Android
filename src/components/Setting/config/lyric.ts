@@ -11,6 +11,7 @@ import { openAMLLServer, openExcludeLyric, openFontManager } from "@/utils/modal
 import { AndroidNativePlayback } from "@/plugins/androidNativePlayback";
 import { cloneDeep, isEqual } from "lodash-es";
 import { toRef } from "vue";
+import LocalLyricDirectories from "../components/LocalLyricDirectories.vue";
 import LyricPreview from "../components/LyricPreview.vue";
 
 const ANDROID_LYRIC_CONFIG_KEY = "android-desktop-lyric-config";
@@ -192,6 +193,14 @@ export const useLyricSettings = (): SettingConfig => {
             type: "custom",
             noWrapper: true,
             component: markRaw(LyricPreview),
+          },
+          {
+            key: "androidLocalLyricPath",
+            label: "本地歌词覆盖在线歌词",
+            type: "custom",
+            noWrapper: true,
+            show: isCapacitorAndroid,
+            component: markRaw(LocalLyricDirectories),
           },
           {
             key: "lyricFontSizeMode",

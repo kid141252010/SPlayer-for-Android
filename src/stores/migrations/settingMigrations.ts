@@ -6,7 +6,7 @@ import type { SettingState } from "../setting";
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 14;
+export const CURRENT_SETTING_SCHEMA_VERSION = 15;
 
 /**
  * 迁移函数类型
@@ -204,7 +204,30 @@ export const settingMigrations: Record<number, MigrationFunction> = {
   },
   14: () => {
     return {
-      lyricGlobalOffset: 0,
+      androidLyricDirectories: [],
+      androidLyricIndexMap: {},
+      androidLyricScanMeta: {
+        lastScanAt: 0,
+        totalFiles: 0,
+        matchedFiles: 0,
+        duplicateIds: 0,
+        failedFiles: 0,
+      },
+    };
+  },
+  15: (state) => {
+    const androidLyricScanMeta = state.androidLyricScanMeta;
+    return {
+      lyricGlobalOffset: state.lyricGlobalOffset ?? 0,
+      androidLyricDirectories: state.androidLyricDirectories ?? [],
+      androidLyricIndexMap: state.androidLyricIndexMap ?? {},
+      androidLyricScanMeta: {
+        lastScanAt: androidLyricScanMeta?.lastScanAt ?? 0,
+        totalFiles: androidLyricScanMeta?.totalFiles ?? 0,
+        matchedFiles: androidLyricScanMeta?.matchedFiles ?? 0,
+        duplicateIds: androidLyricScanMeta?.duplicateIds ?? 0,
+        failedFiles: androidLyricScanMeta?.failedFiles ?? 0,
+      },
     };
   },
 };
