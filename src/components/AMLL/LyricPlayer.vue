@@ -163,7 +163,6 @@ const props = defineProps({
 const emit = defineEmits<{
   lineClick: [event: LyricLineMouseEvent];
   lineContextmenu: [event: LyricLineMouseEvent];
-  lineTap: [event: LyricLineTapEvent];
 }>();
 
 /**
@@ -180,31 +179,10 @@ export interface LyricPlayerRef {
   wrapperEl: Readonly<ShallowRef<HTMLDivElement | null>>;
 }
 
-interface LyricLineObject {
-  getLine: () => LyricLine;
-  getElement?: () => HTMLElement;
-}
-
-export interface LyricLineTapEvent {
-  lineIndex: number;
-  line: LyricLineObject;
-  event: TouchEvent;
-}
-
 // 模板引用
 const wrapperRef = useTemplateRef<HTMLDivElement>("wrapper-ref");
 // 歌词播放实例
 const playerRef = ref<CoreLyricPlayer>();
-const touchStart = ref<{
-  x: number;
-  y: number;
-  time: number;
-  lineIndex: number;
-  line: LyricLineObject;
-} | null>(null);
-
-const TAP_MOVE_TOLERANCE = 12;
-const TAP_MAX_DURATION = 500;
 
 // 事件处理器
 const lineClickHandler = (e: Event) => emit("lineClick", e as LyricLineMouseEvent);
@@ -213,7 +191,7 @@ const lineContextMenuHandler = (e: Event) => emit("lineContextmenu", e as LyricL
 // 底部行元素
 const bottomLineEl = computed(() => playerRef.value?.getBottomLineElement());
 
-type InternalLyricLineObject = LyricLineObject & {
+type InternalLyricLineObject = {
   enable?: (time?: number, shouldPlay?: boolean) => void | Promise<void>;
 };
 
@@ -228,60 +206,6 @@ type InternalLyricPlayer = CoreLyricPlayer & {
 };
 
 const getInternalPlayer = () => playerRef.value as InternalLyricPlayer | undefined;
-
-const getLineElement = (line: LyricLineObject): HTMLElement | undefined =>
-  line.getElement?.();
-
-const getTouchLine = (event: TouchEvent) => {
-  const target = event.target;
-  if (!(target instanceof Node)) return null;
-
-  const lineObjects = playerRef.value?.currentLyricLineObjects ?? [];
-  const lineIndex = lineObjects.findIndex((line) => getLineElement(line)?.contains(target));
-  if (lineIndex < 0) return null;
-
-  return {
-    lineIndex,
-    line: lineObjects[lineIndex],
-  };
-};
-
-const resetLineTouch = () => {
-  touchStart.value = null;
-};
-
-const handleLineTouchStart = (event: TouchEvent) => {
-  if (event.touches.length !== 1) return;
-  const touchLine = getTouchLine(event);
-  if (!touchLine) return;
-
-  const point = event.touches[0];
-  touchStart.value = {
-    x: point.clientX,
-    y: point.clientY,
-    time: Date.now(),
-    ...touchLine,
-  };
-};
-
-const handleLineTouchEnd = (event: TouchEvent) => {
-  const touch = touchStart.value;
-  resetLineTouch();
-  const point = event.changedTouches[0];
-  if (!touch || !point) return;
-
-  const moved = Math.hypot(point.clientX - touch.x, point.clientY - touch.y);
-  const duration = Date.now() - touch.time;
-  if (moved > TAP_MOVE_TOLERANCE || duration > TAP_MAX_DURATION) return;
-
-  queueMicrotask(() => {
-    emit("lineTap", {
-      lineIndex: touch.lineIndex,
-      line: touch.line,
-      event,
-    });
-  });
-};
 
 // 补齐新激活行的动画时间
 const syncNewHotLineAnimations = (
@@ -478,12 +402,7 @@ defineExpose<LyricPlayerRef>({
 </script>
 
 <template>
-  <div
-    ref="wrapper-ref"
-    @touchstart.capture="handleLineTouchStart"
-    @touchend.capture="handleLineTouchEnd"
-    @touchcancel.capture="resetLineTouch"
-  >
+  <div ref="wrapper-ref">
     <Teleport v-if="bottomLineEl" :to="bottomLineEl">
       <slot name="bottom-line" />
     </Teleport>

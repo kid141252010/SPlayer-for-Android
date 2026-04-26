@@ -157,7 +157,7 @@ export const useDataStore = defineStore("data", {
                 "downloadingSongs",
               ].includes(key)
             ) {
-              this[key] = data ? markRaw(data as object) : [];
+              this[key] = data ? markRaw(data) : [];
             } else if (key === "likeSongsList" && data) {
               // 特殊处理嵌套对象中的 data
               const listData = data as ListState["likeSongsList"];

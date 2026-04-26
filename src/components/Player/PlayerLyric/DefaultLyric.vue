@@ -69,9 +69,6 @@
               :id="`lrc-${index}`"
               :class="getLyricLineClass(item, index)"
               :style="getLyricLineStyle(item, index)"
-              @touchstart="handleLyricTouchStart($event, item.data.startTime)"
-              @touchend="handleLyricTouchEnd($event, item.data.startTime)"
-              @touchcancel="resetLyricTouch"
               @click="jumpSeek(item.data.startTime)"
             >
               <!-- 逐字歌词 -->
@@ -157,12 +154,6 @@ const settingStore = useSettingStore();
 const player = usePlayerController();
 
 const lyricScrollContainer = ref<HTMLElement | null>(null);
-const lyricTouchStart = ref<{
-  x: number;
-  y: number;
-  time: number;
-  lyricTime: number;
-} | null>(null);
 
 const effectiveLyricsScrollOffset = computed(() =>
   isCapacitorAndroid
@@ -512,53 +503,19 @@ const getLyricLineStyle = (item: ProcessedLyricItem, index: number) => {
   };
 };
 
-const TAP_MOVE_TOLERANCE = 12;
-const TAP_MAX_DURATION = 500;
-
-const resetLyricTouch = () => {
-  lyricTouchStart.value = null;
-};
-
-const handleLyricTouchStart = (event: TouchEvent, time: number) => {
-  if (!isCapacitorAndroid || event.touches.length !== 1 || !Number.isFinite(time)) return;
-  const point = event.touches[0];
-  lyricTouchStart.value = {
-    x: point.clientX,
-    y: point.clientY,
-    time: Date.now(),
-    lyricTime: time,
-  };
-};
-
-const handleLyricTouchEnd = (event: TouchEvent, time: number) => {
-  if (!isCapacitorAndroid) return;
-  const touchStart = lyricTouchStart.value;
-  resetLyricTouch();
-  const point = event.changedTouches[0];
-  if (!touchStart || !point || touchStart.lyricTime !== time) return;
-
-  const moved = Math.hypot(point.clientX - touchStart.x, point.clientY - touchStart.y);
-  const duration = Date.now() - touchStart.time;
-  if (moved > TAP_MOVE_TOLERANCE || duration > TAP_MAX_DURATION) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  jumpSeek(time);
-};
-
 /**
  * 进度跳转
  */
 const jumpSeek = (time: number) => {
-  if (!Number.isFinite(time)) return;
+  if (!time) return;
   // 清除用户滚动状态
   userScrolling.value = false;
   if (userScrollTimeoutId !== null) {
     clearTimeout(userScrollTimeoutId);
     userScrollTimeoutId = null;
   }
-  // 播放跳转只使用原始歌词时间，不叠加任何歌词偏移
-  player.setSeek(time);
+  const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
+  player.setSeek(time - offsetMs);
   player.play();
 };
 

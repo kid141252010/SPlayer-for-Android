@@ -7,7 +7,7 @@
     </div>
 
     <div
-      :class="['mobile-content', { swiping: isPageSwiping }]"
+      :class="['mobile-content', { swiping: isSwiping }]"
       :style="{ transform: contentTransform }"
       @click.stop
     >
@@ -151,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { useEventListener, useSwipe } from "@vueuse/core";
+import { useSwipe } from "@vueuse/core";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { useTimeFormat } from "@/composables/useTimeFormat";
@@ -168,7 +168,6 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
 
 const mobileStart = ref<HTMLElement | null>(null);
 const pageIndex = ref(0);
-const ignorePageSwipe = ref(false);
 
 const hasLyric = computed(() => musicStore.isHasLrc && musicStore.playSong.type !== "radio");
 
@@ -184,16 +183,9 @@ watch(hasLyric, (value) => {
   if (!value) pageIndex.value = 0;
 });
 
-const isLyricTouchTarget = (target: EventTarget | null) =>
-  target instanceof Element && !!target.closest(".lyric-main");
-
 const { direction, isSwiping, lengthX } = useSwipe(mobileStart, {
   threshold: 10,
-  onSwipeStart: (event) => {
-    ignorePageSwipe.value = isLyricTouchTarget(event.target);
-  },
   onSwipeEnd: () => {
-    if (ignorePageSwipe.value) return;
     if (!hasLyric.value) return;
 
     if (direction.value === "left" && lengthX.value > 100) {
@@ -204,20 +196,9 @@ const { direction, isSwiping, lengthX } = useSwipe(mobileStart, {
   },
 });
 
-useEventListener(
-  window,
-  ["touchend", "touchcancel"],
-  () => {
-    ignorePageSwipe.value = false;
-  },
-  { passive: true },
-);
-
-const isPageSwiping = computed(() => isSwiping.value && !ignorePageSwipe.value);
-
 const contentTransform = computed(() => {
   const baseOffset = pageIndex.value * 50;
-  if (!isPageSwiping.value || !hasLyric.value) {
+  if (!isSwiping.value || !hasLyric.value) {
     return `translateX(-${baseOffset}%)`;
   }
 

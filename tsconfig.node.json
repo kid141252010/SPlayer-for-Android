@@ -7,7 +7,6 @@
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
     "noEmit": true,
     "baseUrl": ".",
     "types": ["node"],
