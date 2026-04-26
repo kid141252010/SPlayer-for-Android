@@ -83,6 +83,16 @@ class PlayerController {
   }
 
   /**
+   * 获取最终歌词偏移
+   * @param songId 歌曲 ID
+   */
+  private getLyricOffset(songId?: number): number {
+    const settingStore = useSettingStore();
+    const statusStore = useStatusStore();
+    return settingStore.lyricGlobalOffset + statusStore.getSongOffset(songId);
+  }
+
+  /**
    * 应用 ReplayGain (音量平衡)
    * @param songOverride 强制指定歌曲
    * @param apply 是否立即应用到当前引擎
@@ -240,7 +250,7 @@ class PlayerController {
         playerIpc.sendMacStatusBarProgress({
           currentTime: startSeek,
           duration: song.duration,
-          offset: statusStore.getSongOffset(song.id),
+          offset: this.getLyricOffset(song.id),
         });
       }
     }
@@ -1005,7 +1015,7 @@ class PlayerController {
       useAutomixManager().updateAutomixMonitoring();
       // 计算歌词索引
       const songId = musicStore.playSong?.id;
-      const offset = statusStore.getSongOffset(songId);
+      const offset = this.getLyricOffset(songId);
       const useYrc = !!(settingStore.showWordLyrics && musicStore.songLyric.yrcData?.length);
       let rawLyrics: LyricLine[] = [];
       if (useYrc) {
@@ -1031,7 +1041,7 @@ class PlayerController {
       playerIpc.sendLyric({
         currentTime,
         songId: musicStore.playSong?.id,
-        songOffset: statusStore.getSongOffset(musicStore.playSong?.id),
+        songOffset: offset,
       });
       // 更新 Android 悬浮歌词进度
       this.syncFloatingLyricProgress(currentTime, statusStore.playStatus);
@@ -1877,8 +1887,9 @@ class PlayerController {
     if (!isCapacitorAndroid) return;
     const statusStore = useStatusStore();
     if (!statusStore.showDesktopLyric) return;
+    const musicStore = useMusicStore();
     AndroidNativePlayback.updateFloatingLyricProgress({
-      timeMs,
+      timeMs: Math.max(0, timeMs + this.getLyricOffset(musicStore.playSong?.id)),
       playing,
     }).catch(() => {});
   }

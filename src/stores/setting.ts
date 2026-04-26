@@ -232,6 +232,8 @@ export interface SettingState {
   hidePassedLines: boolean;
   /** 文字动画的渐变宽度 */
   wordFadeWidth: number;
+  /** 全局歌词偏移（毫秒） */
+  lyricGlobalOffset: number;
   /** 歌词时延调节步长（毫秒） */
   lyricOffsetStep: number;
   /** 音频延迟手动补偿（毫秒） */
@@ -583,6 +585,7 @@ export const useSettingStore = defineStore("setting", {
     useAMSpring: false,
     hidePassedLines: false,
     wordFadeWidth: 0.5,
+    lyricGlobalOffset: 0,
     lyricOffsetStep: 500,
     audioDelayCompensation: 0,
     enableOnlineTTMLLyric: false,

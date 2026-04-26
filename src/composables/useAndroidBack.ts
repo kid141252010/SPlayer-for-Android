@@ -1,6 +1,6 @@
 import { onMounted, onUnmounted } from "vue";
-import { App as CapacitorApp, type PluginListenerHandle } from "@capacitor/app";
-import { Capacitor } from "@capacitor/core";
+import { App as CapacitorApp } from "@capacitor/app";
+import { Capacitor, type PluginListenerHandle } from "@capacitor/core";
 import { useRouter } from "vue-router";
 
 const ROOT_PATHS = new Set(["/", "/home"]);

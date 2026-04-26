@@ -28,7 +28,7 @@
         v-else
         ref="lyricPlayerRef"
         :lyricLines="amLyricsData"
-        :currentTime="currentTime"
+        :currentTime="amllDisplayTime"
         :playing="statusStore.playStatus"
         :enableSpring="settingStore.useAMSpring"
         :enableScale="settingStore.useAMSpring"
@@ -49,6 +49,7 @@
         }"
         class="am-lyric"
         @line-click="jumpSeek"
+        @line-tap="jumpSeekByLine"
       />
     </div>
   </Transition>
@@ -64,7 +65,7 @@ import { isCapacitorAndroid } from "@/utils/env";
 import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
 import { getFontSize } from "@/utils/style";
 
-defineProps({
+const props = defineProps({
   currentTime: {
     type: Number,
     default: 0,
@@ -77,6 +78,12 @@ const settingStore = useSettingStore();
 const player = usePlayerController();
 
 const lyricPlayerRef = ref<any | null>(null);
+type AmlLyricLineEvent = {
+  lineIndex: number;
+  line: {
+    getLine: () => LyricLine;
+  };
+};
 
 const effectiveLyricsScrollOffset = computed(() =>
   isCapacitorAndroid
@@ -130,19 +137,96 @@ const getLineSeekTime = (line?: LyricLine) => {
 
   if (isValidLyricTime(firstWordStartTime)) return firstWordStartTime;
   if (isValidLyricTime(line?.startTime)) return line.startTime;
-  return null;
+  return undefined;
+};
+
+const amllSeekCompensation = ref<{
+  advanceMs: number;
+  lineStartTime: number;
+  lineEndTime: number;
+} | null>(null);
+
+const amllDisplayTime = computed(() => {
+  const compensation = amllSeekCompensation.value;
+  if (!compensation) return props.currentTime;
+
+  if (
+    !Number.isFinite(compensation.advanceMs) ||
+    !Number.isFinite(compensation.lineStartTime) ||
+    (!Number.isFinite(compensation.lineEndTime) && compensation.lineEndTime !== Infinity) ||
+    compensation.advanceMs <= 0 ||
+    props.currentTime < compensation.lineStartTime ||
+    props.currentTime >= compensation.lineEndTime
+  ) {
+    return props.currentTime;
+  }
+
+  return props.currentTime - compensation.advanceMs;
+});
+
+const getOriginalLyricTime = (lineIndex: number) => getLineSeekTime(amLyricsData.value[lineIndex]);
+const getOriginalLyricEndTime = (lineIndex: number) => {
+  const line = amLyricsData.value[lineIndex];
+  if (!Number.isFinite(line?.startTime)) return undefined;
+  if (Number.isFinite(line?.endTime) && Number(line?.endTime) > Number(line?.startTime)) {
+    return line?.endTime;
+  }
+  const nextLine = amLyricsData.value[lineIndex + 1];
+  if (
+    Number.isFinite(nextLine?.startTime) &&
+    Number(nextLine?.startTime) > Number(line?.startTime)
+  ) {
+    return nextLine?.startTime;
+  }
+  // 末行无结束时间时，补偿持续到歌曲结束
+  return Infinity;
+};
+
+const seekToOriginalPlaybackTime = (time: number | undefined) => {
+  if (typeof time !== "number" || !Number.isFinite(time)) return;
+  // 播放跳转只使用原始歌词时间，不叠加歌词偏移或 AMLL 提前时间
+  player.setSeek(time);
+  player.play();
+};
+
+const seekToOriginalLyricLine = (lineIndex: number) => {
+  seekToOriginalPlaybackTime(getOriginalLyricTime(lineIndex));
+};
+
+const startAmlSeekCompensation = (line: AmlLyricLineEvent) => {
+  const originalTime = getOriginalLyricTime(line.lineIndex);
+  const originalEndTime = getOriginalLyricEndTime(line.lineIndex);
+  // AMLL 内部时间只用于触摸后的显示补偿，不能作为播放跳转目标
+  const amllTime = line.line.getLine()?.startTime;
+  if (
+    !Number.isFinite(originalTime) ||
+    (!Number.isFinite(originalEndTime) && originalEndTime !== Infinity) ||
+    !Number.isFinite(amllTime)
+  ) {
+    amllSeekCompensation.value = null;
+    return;
+  }
+
+  const advanceMs = Number(originalTime) - Number(amllTime);
+  amllSeekCompensation.value =
+    advanceMs > 0
+      ? {
+          advanceMs,
+          lineStartTime: Number(originalTime),
+          lineEndTime: Number(originalEndTime),
+        }
+      : null;
 };
 
 // 进度跳转
-const jumpSeek = (event: LyricLineMouseEvent) => {
-  const originalLine = amLyricsData.value[event.lineIndex];
-  const eventLine = event.line.getLine();
-  const time = getLineSeekTime(originalLine) ?? getLineSeekTime(eventLine);
-  if (time === null) return;
+const jumpSeek = (line: LyricLineMouseEvent) => {
+  seekToOriginalLyricLine(line.lineIndex);
+};
 
-  const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
-  player.setSeek(time - offsetMs);
-  player.play();
+const jumpSeekByLine = (line: AmlLyricLineEvent) => {
+  if (!isCapacitorAndroid) return;
+  startAmlSeekCompensation(line);
+  seekToOriginalLyricLine(line.lineIndex);
 };
 
 // 处理歌词语言
@@ -166,6 +250,7 @@ const processLyricLanguage = (player = lyricPlayerRef.value) => {
 
 // 切换歌曲时处理歌词语言
 watch(amLyricsData, (data) => {
+  amllSeekCompensation.value = null;
   if (data) nextTick(() => processLyricLanguage());
 });
 watch(lyricPlayerRef, (player) => {

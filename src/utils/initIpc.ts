@@ -2,7 +2,7 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import * as playerIpc from "@/core/player/PlayerIpc";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import type { SettingType } from "@/types/main";
-import { TASKBAR_IPC_CHANNELS, type TaskbarConfig } from "@/types/shared";
+import { DEFAULT_TASKBAR_CONFIG, TASKBAR_IPC_CHANNELS, type TaskbarConfig } from "@/types/shared";
 import { handleProtocolUrl } from "@/utils/protocol";
 import { cloneDeep } from "lodash-es";
 import { toRaw } from "vue";
@@ -24,6 +24,9 @@ const initIpc = () => {
     if (!isElectron) return;
     const player = usePlayerController();
     const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
+    const getLyricOffset = () =>
+      settingStore.lyricGlobalOffset + statusStore.getSongOffset(useMusicStore().playSong?.id);
 
     // 播放
     window.electron.ipcRenderer.on("play", () => player.play());
@@ -92,8 +95,13 @@ const initIpc = () => {
       const { name, artist } = getPlayerInfoObj() || {};
       const cover = musicStore.getSongCover("s") || "";
 
-      const configPayload: TaskbarConfig =
-        (await window.electron.ipcRenderer.invoke(TASKBAR_IPC_CHANNELS.GET_OPTION)) ?? {};
+      const savedConfig = await window.electron.ipcRenderer.invoke<Partial<TaskbarConfig> | null>(
+        TASKBAR_IPC_CHANNELS.GET_OPTION,
+      );
+      const configPayload: TaskbarConfig = {
+        ...DEFAULT_TASKBAR_CONFIG,
+        ...(savedConfig ?? {}),
+      };
 
       const hasYrc = (musicStore.songLyric.yrcData?.length ?? 0) > 0;
       const lyricsPayload = {
@@ -116,7 +124,7 @@ const initIpc = () => {
             tick: [
               statusStore.currentTime,
               statusStore.duration,
-              statusStore.getSongOffset(musicStore.playSong?.id),
+              getLyricOffset(),
             ],
           },
           config: configPayload,
@@ -128,7 +136,7 @@ const initIpc = () => {
       window.electron.ipcRenderer.send("mac-statusbar:update-progress", {
         currentTime: statusStore.currentTime,
         duration: statusStore.duration,
-        offset: statusStore.getSongOffset(musicStore.playSong?.id),
+        offset: getLyricOffset(),
       });
       // 发送封面颜色
       sendTaskbarCoverColor();
@@ -148,7 +156,7 @@ const initIpc = () => {
             artistName: artist,
             currentTime: statusStore.currentTime,
             songId: musicStore.playSong?.id,
-            songOffset: statusStore.getSongOffset(musicStore.playSong?.id),
+            songOffset: getLyricOffset(),
             lrcData: musicStore.songLyric.lrcData ?? [],
             yrcData: musicStore.songLyric.yrcData ?? [],
             lyricIndex: statusStore.lyricIndex,

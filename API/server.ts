@@ -1,4 +1,5 @@
 import fastify from "fastify";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import fastifyCookie from "@fastify/cookie";
 import fastifyMultipart from "@fastify/multipart";
 import NeteaseCloudMusicApi from "@neteasecloudmusicapienhanced/api";
@@ -16,14 +17,15 @@ type RequestWithCookie = {
   headers: { cookie?: string };
 };
 
-type DynamicRequest = RequestWithCookie & {
-  params: { "*": string };
+type DynamicRoute = {
+  Params: { "*": string };
+  Querystring: Record<string, unknown>;
+  Body: Record<string, unknown>;
+  Headers: { cookie?: string };
 };
 
-type ReplyShape = {
-  status: (code: number) => { send: (payload: unknown) => unknown };
-  send: (payload: unknown) => unknown;
-  header: (name: string, value: string) => void;
+type TtmlRoute = {
+  Querystring: { id?: string };
 };
 
 const mergeCookieInput = (request: RequestWithCookie) => {
@@ -53,7 +55,8 @@ const resolveRouterName = (requestPath: string) => {
 };
 
 const createDynamicHandler =
-  (server: ReturnType<typeof fastify>) => async (request: DynamicRequest, reply: ReplyShape) => {
+  (server: ReturnType<typeof fastify>) =>
+  async (request: FastifyRequest<DynamicRoute>, reply: FastifyReply) => {
     const requestPath = request.params["*"];
     const routerName = resolveRouterName(requestPath);
 
@@ -131,12 +134,12 @@ export const createStandaloneApiServer = async () => {
   });
 
   const dynamicHandler = createDynamicHandler(server);
-  server.get("/api/netease/*", dynamicHandler);
-  server.post("/api/netease/*", dynamicHandler);
+  server.get<DynamicRoute>("/api/netease/*", dynamicHandler);
+  server.post<DynamicRoute>("/api/netease/*", dynamicHandler);
 
-  server.get(
+  server.get<TtmlRoute>(
     "/api/netease/lyric/ttml",
-    async (request: { query: { id?: string } }, reply: ReplyShape) => {
+    async (request, reply) => {
       const id = request.query.id;
       if (!id) {
         return reply.status(400).send({ error: "id is required" });
