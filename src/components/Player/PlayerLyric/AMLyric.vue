@@ -189,13 +189,6 @@ const seekToOriginalPlaybackTime = (time: number | undefined) => {
   player.play();
 };
 
-const seekToTouchPlaybackTime = (time: number | undefined) => {
-  if (typeof time !== "number" || !Number.isFinite(time)) return;
-  // 触控 seek 试用一半全局歌词偏移反推播放时间
-  player.setSeek(time - settingStore.lyricGlobalOffset / 2);
-  player.play();
-};
-
 const seekToOriginalLyricLine = (lineIndex: number) => {
   seekToOriginalPlaybackTime(getOriginalLyricTime(lineIndex));
 };
@@ -233,7 +226,7 @@ const jumpSeek = (line: LyricLineMouseEvent) => {
 const jumpSeekByLine = (line: AmlLyricLineEvent) => {
   if (!isCapacitorAndroid) return;
   startAmlSeekCompensation(line);
-  seekToTouchPlaybackTime(getOriginalLyricTime(line.lineIndex));
+  seekToOriginalLyricLine(line.lineIndex);
 };
 
 // 处理歌词语言
