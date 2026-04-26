@@ -66,7 +66,11 @@ import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
 import { getFontSize } from "@/utils/style";
 
 const props = defineProps({
-  currentTime: {
+  playbackTime: {
+    type: Number,
+    default: 0,
+  },
+  lyricDisplayOffset: {
     type: Number,
     default: 0,
   },
@@ -146,23 +150,26 @@ const amllSeekCompensation = ref<{
   lineEndTime: number;
 } | null>(null);
 
-const amllDisplayTime = computed(() => {
+const getAmlDisplayTime = (playbackTime: number) => {
+  const displayTime = playbackTime + props.lyricDisplayOffset;
   const compensation = amllSeekCompensation.value;
-  if (!compensation) return props.currentTime;
+  if (!compensation) return displayTime;
 
   if (
     !Number.isFinite(compensation.advanceMs) ||
     !Number.isFinite(compensation.lineStartTime) ||
     (!Number.isFinite(compensation.lineEndTime) && compensation.lineEndTime !== Infinity) ||
     compensation.advanceMs <= 0 ||
-    props.currentTime < compensation.lineStartTime ||
-    props.currentTime >= compensation.lineEndTime
+    playbackTime < compensation.lineStartTime ||
+    playbackTime >= compensation.lineEndTime
   ) {
-    return props.currentTime;
+    return displayTime;
   }
 
-  return props.currentTime - compensation.advanceMs;
-});
+  return displayTime - compensation.advanceMs;
+};
+
+const amllDisplayTime = computed(() => getAmlDisplayTime(props.playbackTime));
 
 const getOriginalLyricTime = (lineIndex: number) => getLineSeekTime(amLyricsData.value[lineIndex]);
 const getOriginalLyricEndTime = (lineIndex: number) => {
@@ -225,9 +232,11 @@ const jumpSeek = (line: LyricLineMouseEvent) => {
 
 const jumpSeekByLine = (line: AmlLyricLineEvent) => {
   if (!isCapacitorAndroid) return;
+  const time = getOriginalLyricTime(line.lineIndex);
+  if (!isValidLyricTime(time)) return;
   startAmlSeekCompensation(line);
-  lyricPlayerRef.value?.forceNextSeekLayout?.();
-  seekToOriginalLyricLine(line.lineIndex);
+  lyricPlayerRef.value?.syncTouchSeekTime?.(getAmlDisplayTime(time));
+  seekToOriginalPlaybackTime(time);
 };
 
 // 处理歌词语言
