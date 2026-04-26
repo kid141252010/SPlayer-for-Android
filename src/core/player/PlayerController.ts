@@ -640,7 +640,9 @@ class PlayerController {
     }
   }
 
-  private buildAndroidTrackMetadata(song: SongType): AndroidNativeMetadataPayload & { liked?: boolean } {
+  private buildAndroidTrackMetadata(
+    song: SongType,
+  ): AndroidNativeMetadataPayload & { liked?: boolean } {
     const dataStore = useDataStore();
     const info = getPlayerInfoObj(song) || { name: song.name, artist: "", album: "" };
 
@@ -710,7 +712,8 @@ class PlayerController {
       nextUrl = nextSong.streamUrl;
     } else if (typeof nextSong.id === "number") {
       const songManager = useSongManager();
-      const prefetched = songManager.peekPrefetch(nextSong.id) ?? (await songManager.prefetchNextSong());
+      const prefetched =
+        songManager.peekPrefetch(nextSong.id) ?? (await songManager.prefetchNextSong());
       if (prefetched?.id === nextSong.id && prefetched.url) {
         nextUrl = prefetched.url;
       }
@@ -1821,7 +1824,7 @@ class PlayerController {
           try {
             await AndroidNativePlayback.requestOverlayPermission();
           } catch (error) {
-            console.warn("打开悬浮窗权限设置失败:", error);
+            console.warn("请求悬浮窗权限失败:", error);
           }
           return;
         }
