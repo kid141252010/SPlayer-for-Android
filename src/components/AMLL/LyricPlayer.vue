@@ -178,6 +178,10 @@ export interface LyricPlayerRef {
    * 将歌词播放实例的元素包裹起来的 DIV 元素实例
    */
   wrapperEl: Readonly<ShallowRef<HTMLDivElement | null>>;
+  /**
+   * 下次触控 seek 强制布局落位
+   */
+  forceNextSeekLayout: () => void;
 }
 
 interface LyricLineObject {
@@ -202,6 +206,7 @@ const touchStart = ref<{
   lineIndex: number;
   line: LyricLineObject;
 } | null>(null);
+const forceNextSeekLayoutFlag = ref(false);
 
 const TAP_MOVE_TOLERANCE = 12;
 const TAP_MAX_DURATION = 500;
@@ -224,13 +229,12 @@ type InternalLyricPlayer = CoreLyricPlayer & {
   currentLyricLineObjects?: InternalLyricLineObject[];
   scrollToIndex?: number;
   resetScroll?: () => void;
-  calcLayout?: () => void | Promise<void>;
+  calcLayout?: (sync?: boolean, force?: boolean) => void | Promise<void>;
 };
 
 const getInternalPlayer = () => playerRef.value as InternalLyricPlayer | undefined;
 
-const getLineElement = (line: LyricLineObject): HTMLElement | undefined =>
-  line.getElement?.();
+const getLineElement = (line: LyricLineObject): HTMLElement | undefined => line.getElement?.();
 
 const getTouchLine = (event: TouchEvent) => {
   const target = event.target;
@@ -248,6 +252,10 @@ const getTouchLine = (event: TouchEvent) => {
 
 const resetLineTouch = () => {
   touchStart.value = null;
+};
+
+const forceNextSeekLayout = () => {
+  forceNextSeekLayoutFlag.value = true;
 };
 
 const handleLineTouchStart = (event: TouchEvent) => {
@@ -309,7 +317,7 @@ const syncPlaybackTime = (time: number) => {
 };
 
 // 跳转或重载歌词时强制落位
-const syncSeekTime = (time: number) => {
+const syncSeekTime = (time: number, forceLayout = false) => {
   const player = getInternalPlayer();
   if (!player) return;
 
@@ -329,7 +337,7 @@ const syncSeekTime = (time: number) => {
     }
 
     player.resetScroll?.();
-    void player.calcLayout?.();
+    void player.calcLayout?.(forceLayout, forceLayout);
   }
 };
 
@@ -437,9 +445,11 @@ watch(
   (time, oldTime) => {
     if (time === undefined) return;
     const isSeek = oldTime !== undefined && Math.abs(time - oldTime) > 1000;
+    const forceSeekLayout = forceNextSeekLayoutFlag.value && isSeek;
+    if (forceNextSeekLayoutFlag.value) forceNextSeekLayoutFlag.value = false;
 
     if (isSeek) {
-      syncSeekTime(time);
+      syncSeekTime(time, forceSeekLayout);
     } else {
       syncPlaybackTime(time);
     }
@@ -474,6 +484,7 @@ watchEffect(() => {
 defineExpose<LyricPlayerRef>({
   lyricPlayer: playerRef,
   wrapperEl: wrapperRef,
+  forceNextSeekLayout,
 });
 </script>
 
