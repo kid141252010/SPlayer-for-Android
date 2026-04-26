@@ -229,6 +229,60 @@ type InternalLyricPlayer = CoreLyricPlayer & {
 
 const getInternalPlayer = () => playerRef.value as InternalLyricPlayer | undefined;
 
+const getLineElement = (line: LyricLineObject): HTMLElement | undefined =>
+  line.getElement?.();
+
+const getTouchLine = (event: TouchEvent) => {
+  const target = event.target;
+  if (!(target instanceof Node)) return null;
+
+  const lineObjects = playerRef.value?.currentLyricLineObjects ?? [];
+  const lineIndex = lineObjects.findIndex((line) => getLineElement(line)?.contains(target));
+  if (lineIndex < 0) return null;
+
+  return {
+    lineIndex,
+    line: lineObjects[lineIndex],
+  };
+};
+
+const resetLineTouch = () => {
+  touchStart.value = null;
+};
+
+const handleLineTouchStart = (event: TouchEvent) => {
+  if (event.touches.length !== 1) return;
+  const touchLine = getTouchLine(event);
+  if (!touchLine) return;
+
+  const point = event.touches[0];
+  touchStart.value = {
+    x: point.clientX,
+    y: point.clientY,
+    time: Date.now(),
+    ...touchLine,
+  };
+};
+
+const handleLineTouchEnd = (event: TouchEvent) => {
+  const touch = touchStart.value;
+  resetLineTouch();
+  const point = event.changedTouches[0];
+  if (!touch || !point) return;
+
+  const moved = Math.hypot(point.clientX - touch.x, point.clientY - touch.y);
+  const duration = Date.now() - touch.time;
+  if (moved > TAP_MOVE_TOLERANCE || duration > TAP_MAX_DURATION) return;
+
+  queueMicrotask(() => {
+    emit("lineTap", {
+      lineIndex: touch.lineIndex,
+      line: touch.line,
+      event,
+    });
+  });
+};
+
 // 补齐新激活行的动画时间
 const syncNewHotLineAnimations = (
   player: InternalLyricPlayer,
@@ -277,59 +331,6 @@ const syncSeekTime = (time: number) => {
     player.resetScroll?.();
     void player.calcLayout?.();
   }
-};
-
-const getLineElement = (line: LyricLineObject): HTMLElement | undefined => line.getElement?.();
-
-const getTouchLine = (event: TouchEvent) => {
-  const target = event.target;
-  if (!(target instanceof Node)) return null;
-
-  const lineObjects = getInternalPlayer()?.currentLyricLineObjects ?? [];
-  const lineIndex = lineObjects.findIndex((line) => getLineElement(line)?.contains(target));
-  if (lineIndex < 0) return null;
-
-  return {
-    lineIndex,
-    line: lineObjects[lineIndex],
-  };
-};
-
-const resetLineTouch = () => {
-  touchStart.value = null;
-};
-
-const handleLineTouchStart = (event: TouchEvent) => {
-  if (event.touches.length !== 1) return;
-  const touchLine = getTouchLine(event);
-  if (!touchLine) return;
-
-  const point = event.touches[0];
-  touchStart.value = {
-    x: point.clientX,
-    y: point.clientY,
-    time: Date.now(),
-    ...touchLine,
-  };
-};
-
-const handleLineTouchEnd = (event: TouchEvent) => {
-  const touch = touchStart.value;
-  resetLineTouch();
-  const point = event.changedTouches[0];
-  if (!touch || !point) return;
-
-  const moved = Math.hypot(point.clientX - touch.x, point.clientY - touch.y);
-  const duration = Date.now() - touch.time;
-  if (moved > TAP_MOVE_TOLERANCE || duration > TAP_MAX_DURATION) return;
-
-  queueMicrotask(() => {
-    emit("lineTap", {
-      lineIndex: touch.lineIndex,
-      line: touch.line,
-      event,
-    });
-  });
 };
 
 // 组件挂载时初始化

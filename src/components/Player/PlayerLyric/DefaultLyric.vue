@@ -557,6 +557,7 @@ const jumpSeek = (time: number) => {
     clearTimeout(userScrollTimeoutId);
     userScrollTimeoutId = null;
   }
+  // 播放跳转只使用原始歌词时间，不叠加任何歌词偏移
   player.setSeek(time);
   player.play();
 };
