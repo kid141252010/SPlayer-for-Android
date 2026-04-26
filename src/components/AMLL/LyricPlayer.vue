@@ -191,6 +191,72 @@ const lineContextMenuHandler = (e: Event) => emit("lineContextmenu", e as LyricL
 // 底部行元素
 const bottomLineEl = computed(() => playerRef.value?.getBottomLineElement());
 
+type InternalLyricLineObject = {
+  enable?: (time?: number, shouldPlay?: boolean) => void | Promise<void>;
+};
+
+type InternalLyricPlayer = CoreLyricPlayer & {
+  hotLines?: Set<number>;
+  bufferedLines?: Set<number>;
+  processedLines?: LyricLine[];
+  currentLyricLineObjects?: InternalLyricLineObject[];
+  scrollToIndex?: number;
+  resetScroll?: () => void;
+  calcLayout?: () => void | Promise<void>;
+};
+
+const getInternalPlayer = () => playerRef.value as InternalLyricPlayer | undefined;
+
+// 补齐新激活行的动画时间
+const syncNewHotLineAnimations = (
+  player: InternalLyricPlayer,
+  previousHotLines: Set<number>,
+  time: number,
+) => {
+  const { hotLines, currentLyricLineObjects } = player;
+  if (!hotLines || !Array.isArray(currentLyricLineObjects)) return;
+
+  for (const id of hotLines) {
+    if (previousHotLines.has(id)) continue;
+    void currentLyricLineObjects[id]?.enable?.(time, props.playing);
+  }
+};
+
+// 正常播放时同步时间
+const syncPlaybackTime = (time: number) => {
+  const player = getInternalPlayer();
+  if (!player) return;
+
+  const previousHotLines = new Set(player.hotLines ?? []);
+  player.setCurrentTime(time, false);
+  syncNewHotLineAnimations(player, previousHotLines, time);
+};
+
+// 跳转或重载歌词时强制落位
+const syncSeekTime = (time: number) => {
+  const player = getInternalPlayer();
+  if (!player) return;
+
+  player.setCurrentTime(time, true);
+
+  if (player.bufferedLines && player.hotLines && player.processedLines) {
+    player.bufferedLines.clear();
+    for (const v of player.hotLines) {
+      player.bufferedLines.add(v);
+    }
+
+    if (player.bufferedLines.size > 0) {
+      player.scrollToIndex = Math.min(...player.bufferedLines);
+    } else {
+      const foundIndex = player.processedLines.findIndex((line) => line.startTime >= time);
+      player.scrollToIndex = foundIndex === -1 ? player.processedLines.length : foundIndex;
+    }
+
+    player.resetScroll?.();
+    void player.calcLayout?.();
+  }
+};
+
 // 组件挂载时初始化
 onMounted(() => {
   const wrapper = wrapperRef.value;
@@ -279,9 +345,15 @@ watchEffect(() => {
 });
 
 // 歌词行数据
-watchEffect(() => {
-  if (props.lyricLines !== undefined) playerRef.value?.setLyricLines(props.lyricLines);
-});
+watch(
+  [() => props.lyricLines, playerRef],
+  ([lines, player]) => {
+    if (lines === undefined || !player) return;
+    player.setLyricLines(lines);
+    syncSeekTime(props.currentTime);
+  },
+  { immediate: true },
+);
 
 // 当前播放时间
 watch(
@@ -291,34 +363,9 @@ watch(
     const isSeek = oldTime !== undefined && Math.abs(time - oldTime) > 1000;
 
     if (isSeek) {
-      // 针对 v0.2.0 版本的临时修复：手动处理跳转逻辑
-      // 因为 npm 版本的 Core 存在 seek 逻辑缺失，这里手动重置滚动状态
-      const player = playerRef.value as any;
-      if (player) {
-        player.setCurrentTime(time, true);
-
-        // 强制重置缓冲行和滚动位置
-        if (player.bufferedLines && player.hotLines && player.processedLines) {
-          player.bufferedLines.clear();
-          for (const v of player.hotLines) {
-            player.bufferedLines.add(v);
-          }
-
-          if (player.bufferedLines.size > 0) {
-            player.scrollToIndex = Math.min(...player.bufferedLines);
-          } else {
-            const foundIndex = player.processedLines.findIndex(
-              (line: any) => line.startTime >= time,
-            );
-            player.scrollToIndex = foundIndex === -1 ? player.processedLines.length : foundIndex;
-          }
-
-          player.resetScroll?.();
-          player.calcLayout?.();
-        }
-      }
+      syncSeekTime(time);
     } else {
-      playerRef.value?.setCurrentTime(time, false);
+      syncPlaybackTime(time);
     }
   },
   { immediate: true },
