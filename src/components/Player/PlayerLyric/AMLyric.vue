@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { LyricLineMouseEvent, type LyricLine } from "@applemusic-like-lyrics/core";
+import type { LyricLineMouseEvent, LyricLine } from "@applemusic-like-lyrics/core";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
