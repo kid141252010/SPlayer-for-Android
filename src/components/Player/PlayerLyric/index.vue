@@ -1,11 +1,7 @@
 <template>
   <div class="player-lyric">
     <!-- 歌词内容 -->
-    <AMLyric
-      v-if="settingStore.useAMLyrics"
-      :playbackTime="playbackTime"
-      :lyricDisplayOffset="lyricDisplayOffset"
-    />
+    <AMLyric v-if="settingStore.useAMLyrics" :currentTime="playSeek" />
     <DefaultLyric v-else :currentTime="playSeek" />
     <!-- 歌词菜单 -->
     <n-flex :class="['lyric-menu', { show: statusStore.playerMetaShow }]" justify="center" vertical>
@@ -112,15 +108,13 @@ const currentSongId = computed(() => musicStore.playSong?.id as number | undefin
 const getTotalLyricOffset = () =>
   settingStore.lyricGlobalOffset + statusStore.getSongOffset(musicStore.playSong?.id);
 
-const playbackTime = ref<number>(player.getSeek());
-const lyricDisplayOffset = ref<number>(getTotalLyricOffset());
-const playSeek = computed(() => playbackTime.value + lyricDisplayOffset.value);
+const playSeek = ref<number>(player.getSeek() + getTotalLyricOffset());
 
 // 实时更新播放进度
 const { pause: pauseSeek, resume: resumeSeek } = useRafFn(() => {
   const songId = musicStore.playSong?.id;
-  playbackTime.value = player.getSeek();
-  lyricDisplayOffset.value = settingStore.lyricGlobalOffset + statusStore.getSongOffset(songId);
+  const offsetTime = settingStore.lyricGlobalOffset + statusStore.getSongOffset(songId);
+  playSeek.value = player.getSeek() + offsetTime;
 });
 
 /**

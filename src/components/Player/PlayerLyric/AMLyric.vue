@@ -66,11 +66,7 @@ import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
 import { getFontSize } from "@/utils/style";
 
 const props = defineProps({
-  playbackTime: {
-    type: Number,
-    default: 0,
-  },
-  lyricDisplayOffset: {
+  currentTime: {
     type: Number,
     default: 0,
   },
@@ -133,42 +129,40 @@ const hasDuet = computed(() => amLyricsData.value?.some((line) => line.isDuet) ?
 const isValidLyricTime = (time: unknown): time is number =>
   typeof time === "number" && Number.isFinite(time) && time >= 0;
 
-// 获取原始歌词行开始时间
+// 获取原始歌词行的真实发声时间
 const getLineSeekTime = (line?: LyricLine) => {
-  if (isValidLyricTime(line?.startTime)) return line.startTime;
-
   const firstWordStartTime = line?.words?.find(
     (word) => word.word?.trim() && isValidLyricTime(word.startTime),
   )?.startTime;
 
   if (isValidLyricTime(firstWordStartTime)) return firstWordStartTime;
+  if (isValidLyricTime(line?.startTime)) return line.startTime;
   return undefined;
 };
 
-const amllTouchSeekState = ref<{
-  lineIndex: number;
-  originalStartTime: number;
-  originalEndTime: number;
-  processedStartTime: number;
+const amllSeekCompensation = ref<{
+  advanceMs: number;
+  lineStartTime: number;
+  lineEndTime: number;
 } | null>(null);
 
-const isTouchSeekStateActive = (
-  state: NonNullable<typeof amllTouchSeekState.value>,
-  playbackTime: number,
-) =>
-  playbackTime >= state.originalStartTime &&
-  (state.originalEndTime === Infinity || playbackTime < state.originalEndTime);
+const amllDisplayTime = computed(() => {
+  const compensation = amllSeekCompensation.value;
+  if (!compensation) return props.currentTime;
 
-const getAmlDisplayTime = (playbackTime: number) => {
-  const touchSeekState = amllTouchSeekState.value;
-  if (touchSeekState && isTouchSeekStateActive(touchSeekState, playbackTime)) {
-    return touchSeekState.processedStartTime + playbackTime - touchSeekState.originalStartTime;
+  if (
+    !Number.isFinite(compensation.advanceMs) ||
+    !Number.isFinite(compensation.lineStartTime) ||
+    (!Number.isFinite(compensation.lineEndTime) && compensation.lineEndTime !== Infinity) ||
+    compensation.advanceMs <= 0 ||
+    props.currentTime < compensation.lineStartTime ||
+    props.currentTime >= compensation.lineEndTime
+  ) {
+    return props.currentTime;
   }
 
-  return playbackTime + props.lyricDisplayOffset;
-};
-
-const amllDisplayTime = computed(() => getAmlDisplayTime(props.playbackTime));
+  return props.currentTime - compensation.advanceMs;
+});
 
 const getOriginalLyricTime = (lineIndex: number) => getLineSeekTime(amLyricsData.value[lineIndex]);
 const getOriginalLyricEndTime = (lineIndex: number) => {
@@ -199,29 +193,29 @@ const seekToOriginalLyricLine = (lineIndex: number) => {
   seekToOriginalPlaybackTime(getOriginalLyricTime(lineIndex));
 };
 
-const startAmlTouchSeekState = (line: AmlLyricLineEvent, originalStartTime: number) => {
+const startAmlSeekCompensation = (line: AmlLyricLineEvent) => {
   const originalTime = getOriginalLyricTime(line.lineIndex);
   const originalEndTime = getOriginalLyricEndTime(line.lineIndex);
-  const processedStartTime = line.line.getLine()?.startTime;
+  // AMLL 内部时间只用于触摸后的显示补偿，不能作为播放跳转目标
+  const amllTime = line.line.getLine()?.startTime;
   if (
-    !isValidLyricTime(originalStartTime) ||
-    originalTime !== originalStartTime ||
+    !Number.isFinite(originalTime) ||
     (!Number.isFinite(originalEndTime) && originalEndTime !== Infinity) ||
-    (Number.isFinite(originalEndTime) && Number(originalEndTime) <= originalStartTime) ||
-    !Number.isFinite(processedStartTime)
+    !Number.isFinite(amllTime)
   ) {
-    amllTouchSeekState.value = null;
-    return null;
+    amllSeekCompensation.value = null;
+    return;
   }
 
-  const state = {
-    lineIndex: line.lineIndex,
-    originalStartTime,
-    originalEndTime: Number(originalEndTime),
-    processedStartTime: Number(processedStartTime),
-  };
-  amllTouchSeekState.value = state;
-  return state;
+  const advanceMs = Number(originalTime) - Number(amllTime);
+  amllSeekCompensation.value =
+    advanceMs > 0
+      ? {
+          advanceMs,
+          lineStartTime: Number(originalTime),
+          lineEndTime: Number(originalEndTime),
+        }
+      : null;
 };
 
 // 进度跳转
@@ -231,13 +225,9 @@ const jumpSeek = (line: LyricLineMouseEvent) => {
 
 const jumpSeekByLine = (line: AmlLyricLineEvent) => {
   if (!isCapacitorAndroid) return;
-  const time = getOriginalLyricTime(line.lineIndex);
-  if (!isValidLyricTime(time)) return;
-  const touchSeekState = startAmlTouchSeekState(line, time);
-  if (touchSeekState) {
-    lyricPlayerRef.value?.syncTouchSeekLine?.(line.lineIndex, touchSeekState.processedStartTime);
-  }
-  seekToOriginalPlaybackTime(time);
+  startAmlSeekCompensation(line);
+  lyricPlayerRef.value?.forceNextSeekLayout?.();
+  seekToOriginalLyricLine(line.lineIndex);
 };
 
 // 处理歌词语言
@@ -261,21 +251,12 @@ const processLyricLanguage = (player = lyricPlayerRef.value) => {
 
 // 切换歌曲时处理歌词语言
 watch(amLyricsData, (data) => {
-  amllTouchSeekState.value = null;
+  amllSeekCompensation.value = null;
   if (data) nextTick(() => processLyricLanguage());
 });
 watch(lyricPlayerRef, (player) => {
   if (player) nextTick(() => processLyricLanguage(player));
 });
-watch(
-  () => props.playbackTime,
-  (time) => {
-    const touchSeekState = amllTouchSeekState.value;
-    if (touchSeekState && !isTouchSeekStateActive(touchSeekState, time)) {
-      amllTouchSeekState.value = null;
-    }
-  },
-);
 </script>
 
 <style lang="scss" scoped>

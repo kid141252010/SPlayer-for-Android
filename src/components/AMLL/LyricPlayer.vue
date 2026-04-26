@@ -179,9 +179,9 @@ export interface LyricPlayerRef {
    */
   wrapperEl: Readonly<ShallowRef<HTMLDivElement | null>>;
   /**
-   * 立即同步触控 seek 后的命中行
+   * 下次触控 seek 强制布局落位
    */
-  syncTouchSeekLine: (lineIndex: number, time: number) => void;
+  forceNextSeekLayout: () => void;
 }
 
 interface LyricLineObject {
@@ -206,16 +206,10 @@ const touchStart = ref<{
   lineIndex: number;
   line: LyricLineObject;
 } | null>(null);
-const pendingTouchSeek = ref<{
-  lineIndex: number;
-  time: number;
-  expiresAt: number;
-} | null>(null);
+const forceNextSeekLayoutFlag = ref(false);
 
 const TAP_MOVE_TOLERANCE = 12;
 const TAP_MAX_DURATION = 500;
-const TOUCH_SEEK_PENDING_TTL = 1000;
-const TOUCH_SEEK_TIME_TOLERANCE = 120;
 
 // 事件处理器
 const lineClickHandler = (e: Event) => emit("lineClick", e as LyricLineMouseEvent);
@@ -226,7 +220,6 @@ const bottomLineEl = computed(() => playerRef.value?.getBottomLineElement());
 
 type InternalLyricLineObject = LyricLineObject & {
   enable?: (time?: number, shouldPlay?: boolean) => void | Promise<void>;
-  disable?: () => void | Promise<void>;
 };
 
 type InternalLyricPlayer = CoreLyricPlayer & {
@@ -259,6 +252,10 @@ const getTouchLine = (event: TouchEvent) => {
 
 const resetLineTouch = () => {
   touchStart.value = null;
+};
+
+const forceNextSeekLayout = () => {
+  forceNextSeekLayoutFlag.value = true;
 };
 
 const handleLineTouchStart = (event: TouchEvent) => {
@@ -342,70 +339,6 @@ const syncSeekTime = (time: number, forceLayout = false) => {
     player.resetScroll?.();
     void player.calcLayout?.(forceLayout, forceLayout);
   }
-};
-
-const syncSeekLineState = (lineIndex: number, time: number) => {
-  const player = getInternalPlayer();
-  if (!player || !Number.isFinite(time)) return;
-
-  const lineObjects = player.currentLyricLineObjects;
-  if (!Array.isArray(lineObjects) || lineIndex < 0 || lineIndex >= lineObjects.length) {
-    syncSeekTime(time, true);
-    return;
-  }
-
-  player.setCurrentTime(time, true);
-
-  if (player.hotLines && player.bufferedLines) {
-    const targetLineIndexes = new Set([lineIndex]);
-    if (lineObjects[lineIndex + 1]?.getLine()?.isBG) {
-      targetLineIndexes.add(lineIndex + 1);
-    }
-
-    const activeLineIndexes = new Set(player.hotLines);
-    player.hotLines.clear();
-    player.bufferedLines.clear();
-
-    for (const targetIndex of targetLineIndexes) {
-      player.hotLines.add(targetIndex);
-      player.bufferedLines.add(targetIndex);
-      void lineObjects[targetIndex]?.enable?.(time, props.playing);
-    }
-
-    for (const activeIndex of activeLineIndexes) {
-      if (!targetLineIndexes.has(activeIndex)) {
-        void lineObjects[activeIndex]?.disable?.();
-      }
-    }
-  }
-
-  player.scrollToIndex = lineIndex;
-  player.resetScroll?.();
-  void player.calcLayout?.(true, true);
-};
-
-const syncTouchSeekLine = (lineIndex: number, time: number) => {
-  if (!Number.isInteger(lineIndex) || !Number.isFinite(time)) return;
-  pendingTouchSeek.value = {
-    lineIndex,
-    time,
-    expiresAt: Date.now() + TOUCH_SEEK_PENDING_TTL,
-  };
-  syncSeekLineState(lineIndex, time);
-};
-
-const getTouchSeekSyncMode = (time: number) => {
-  const pending = pendingTouchSeek.value;
-  if (!pending) return "none";
-  if (Date.now() > pending.expiresAt) {
-    pendingTouchSeek.value = null;
-    return "none";
-  }
-  if (Math.abs(time - pending.time) <= TOUCH_SEEK_TIME_TOLERANCE) {
-    pendingTouchSeek.value = null;
-    return pending;
-  }
-  return "waiting";
 };
 
 // 组件挂载时初始化
@@ -511,16 +444,9 @@ watch(
   () => props.currentTime,
   (time, oldTime) => {
     if (time === undefined) return;
-    const touchSeekSyncMode = getTouchSeekSyncMode(time);
-    if (touchSeekSyncMode === "waiting") return;
-
-    if (touchSeekSyncMode !== "none") {
-      syncSeekLineState(touchSeekSyncMode.lineIndex, time);
-      return;
-    }
-
-    const forceSeekLayout = false;
-    const isSeek = forceSeekLayout || (oldTime !== undefined && Math.abs(time - oldTime) > 1000);
+    const isSeek = oldTime !== undefined && Math.abs(time - oldTime) > 1000;
+    const forceSeekLayout = forceNextSeekLayoutFlag.value && isSeek;
+    if (forceNextSeekLayoutFlag.value) forceNextSeekLayoutFlag.value = false;
 
     if (isSeek) {
       syncSeekTime(time, forceSeekLayout);
@@ -558,7 +484,7 @@ watchEffect(() => {
 defineExpose<LyricPlayerRef>({
   lyricPlayer: playerRef,
   wrapperEl: wrapperRef,
-  syncTouchSeekLine,
+  forceNextSeekLayout,
 });
 </script>
 
