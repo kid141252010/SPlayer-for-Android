@@ -126,6 +126,20 @@ const amLyricsData = computed(() => {
 // 是否有对唱行
 const hasDuet = computed(() => amLyricsData.value?.some((line) => line.isDuet) ?? false);
 
+const isValidLyricTime = (time: unknown): time is number =>
+  typeof time === "number" && Number.isFinite(time) && time >= 0;
+
+// 获取原始歌词行的真实发声时间
+const getLineSeekTime = (line?: LyricLine) => {
+  const firstWordStartTime = line?.words?.find(
+    (word) => word.word?.trim() && isValidLyricTime(word.startTime),
+  )?.startTime;
+
+  if (isValidLyricTime(firstWordStartTime)) return firstWordStartTime;
+  if (isValidLyricTime(line?.startTime)) return line.startTime;
+  return undefined;
+};
+
 const amllSeekCompensation = ref<{
   advanceMs: number;
   lineStartTime: number;
@@ -150,7 +164,8 @@ const amllDisplayTime = computed(() => {
   return props.currentTime - compensation.advanceMs;
 });
 
-const getOriginalLyricTime = (lineIndex: number) => amLyricsData.value[lineIndex]?.startTime;
+const getOriginalLyricTime = (lineIndex: number) =>
+  getLineSeekTime(amLyricsData.value[lineIndex]);
 const getOriginalLyricEndTime = (lineIndex: number) => {
   const line = amLyricsData.value[lineIndex];
   if (!Number.isFinite(line?.startTime)) return undefined;
