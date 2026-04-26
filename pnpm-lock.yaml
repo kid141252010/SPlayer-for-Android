@@ -4,19 +4,16 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@applemusic-like-lyrics/ttml': file:.vender/@applemusic-like-lyrics/ttml
-
 importers:
 
   .:
     dependencies:
       '@applemusic-like-lyrics/core':
-        specifier: file:.vender/@applemusic-like-lyrics/core
-        version: file:.vender/@applemusic-like-lyrics/core(@pixi/app@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/filter-blur@7.4.3(@pixi/core@7.4.3))(@pixi/filter-bulge-pinch@5.1.1(@pixi/core@7.4.3))(@pixi/filter-color-matrix@7.4.3(@pixi/core@7.4.3))(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))
+        specifier: ^0.4.1
+        version: 0.4.1(@pixi/app@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/filter-blur@7.4.3(@pixi/core@7.4.3))(@pixi/filter-bulge-pinch@5.1.1(@pixi/core@7.4.3))(@pixi/filter-color-matrix@7.4.3(@pixi/core@7.4.3))(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))
       '@applemusic-like-lyrics/lyric':
-        specifier: file:.vender/@applemusic-like-lyrics/lyric
-        version: file:.vender/@applemusic-like-lyrics/lyric
+        specifier: ^1.0.0
+        version: 1.0.0
       '@capacitor/android':
         specifier: ^8.0.0
         version: 8.2.0(@capacitor/core@8.2.0)
@@ -270,8 +267,8 @@ importers:
 
 packages:
 
-  '@applemusic-like-lyrics/core@file:.vender/@applemusic-like-lyrics/core':
-    resolution: {directory: .vender/@applemusic-like-lyrics/core, type: directory}
+  '@applemusic-like-lyrics/core@0.4.1':
+    resolution: {integrity: sha512-Gr2MMjf3FXBJRlFuEENZaVn2fBFbOipyU0bsiA2/2GGKVou9dTyL64tuVhzAlVWdSfQEyhuXBhvADig21qd4ig==}
     peerDependencies:
       '@pixi/app': '*'
       '@pixi/core': '*'
@@ -281,11 +278,11 @@ packages:
       '@pixi/filter-color-matrix': '*'
       '@pixi/sprite': '*'
 
-  '@applemusic-like-lyrics/lyric@file:.vender/@applemusic-like-lyrics/lyric':
-    resolution: {directory: .vender/@applemusic-like-lyrics/lyric, type: directory}
+  '@applemusic-like-lyrics/lyric@1.0.0':
+    resolution: {integrity: sha512-fAIg2peCvEu7WwnQswbrajtJ8kXFgR/H7QWL++WppkzG3rwsyR+oWj1EseLbbA3IBdHPO9C8/OOMfKtkGn0rxQ==}
 
-  '@applemusic-like-lyrics/ttml@file:.vender/@applemusic-like-lyrics/ttml':
-    resolution: {directory: .vender/@applemusic-like-lyrics/ttml, type: directory}
+  '@applemusic-like-lyrics/ttml@1.0.0':
+    resolution: {integrity: sha512-vZuYe5Q2kbUGNBKD7yizj4n+mFkKAa7pabZzr+JZco5gYbPvKqiMZbsvAyqLPs1IPmpA9n77X/FTqEfRvdEu3Q==}
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -4971,7 +4968,7 @@ packages:
 
 snapshots:
 
-  '@applemusic-like-lyrics/core@file:.vender/@applemusic-like-lyrics/core(@pixi/app@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/filter-blur@7.4.3(@pixi/core@7.4.3))(@pixi/filter-bulge-pinch@5.1.1(@pixi/core@7.4.3))(@pixi/filter-color-matrix@7.4.3(@pixi/core@7.4.3))(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))':
+  '@applemusic-like-lyrics/core@0.4.1(@pixi/app@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/filter-blur@7.4.3(@pixi/core@7.4.3))(@pixi/filter-bulge-pinch@5.1.1(@pixi/core@7.4.3))(@pixi/filter-color-matrix@7.4.3(@pixi/core@7.4.3))(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))':
     dependencies:
       '@pixi/app': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))
       '@pixi/core': 7.4.3
@@ -4985,12 +4982,12 @@ snapshots:
       deep-freeze: 0.0.1
       gl-matrix: 4.0.0-beta.2
 
-  '@applemusic-like-lyrics/lyric@file:.vender/@applemusic-like-lyrics/lyric':
+  '@applemusic-like-lyrics/lyric@1.0.0':
     dependencies:
-      '@applemusic-like-lyrics/ttml': file:.vender/@applemusic-like-lyrics/ttml
+      '@applemusic-like-lyrics/ttml': 1.0.0
       pako: 2.1.0
 
-  '@applemusic-like-lyrics/ttml@file:.vender/@applemusic-like-lyrics/ttml': {}
+  '@applemusic-like-lyrics/ttml@1.0.0': {}
 
   '@babel/code-frame@7.29.0':
     dependencies:

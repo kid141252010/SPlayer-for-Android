@@ -19,7 +19,6 @@ export default [
   {
     ignores: [
       "**/node_modules",
-      "**/.vender",
       "**/dist",
       "**/out",
       "**/.gradle",

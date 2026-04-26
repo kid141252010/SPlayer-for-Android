@@ -32,8 +32,8 @@
     "build:android": "pnpm build:web && npx cap sync android && pnpm build:android:node && pnpm prepare:android:embedded"
   },
   "dependencies": {
-    "@applemusic-like-lyrics/core": "file:.vender/@applemusic-like-lyrics/core",
-    "@applemusic-like-lyrics/lyric": "file:.vender/@applemusic-like-lyrics/lyric",
+    "@applemusic-like-lyrics/core": "^0.4.1",
+    "@applemusic-like-lyrics/lyric": "^1.0.0",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "8.0.0",
     "@capacitor/core": "^8.0.0",
@@ -117,9 +117,6 @@
     "vue-tsc": "2.2.12"
   },
   "pnpm": {
-    "overrides": {
-      "@applemusic-like-lyrics/ttml": "file:.vender/@applemusic-like-lyrics/ttml"
-    },
     "onlyBuiltDependencies": [
       "@applemusic-like-lyrics/core",
       "@applemusic-like-lyrics/lyric",
