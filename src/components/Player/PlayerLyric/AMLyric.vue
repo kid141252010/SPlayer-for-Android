@@ -227,6 +227,7 @@ const jumpSeek = (event: LyricLineMouseEvent) => {
 const jumpSeekByLine = (line: AmlLyricLineEvent) => {
   if (!isCapacitorAndroid) return;
   startAmlSeekCompensation(line);
+  lyricPlayerRef.value?.forceNextSeekLayout?.();
   seekToOriginalLyricLine(line.lineIndex);
 };
 
