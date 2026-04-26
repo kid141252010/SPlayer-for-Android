@@ -463,21 +463,6 @@ export const useLyricSettings = (): SettingConfig => {
             }),
           },
           {
-            key: "lyricGlobalOffset",
-            label: "全局歌词偏移",
-            type: "input-number",
-            description: "全局永久生效，正值歌词提前，负值歌词延后",
-            min: -10000,
-            max: 10000,
-            step: 100,
-            suffix: "ms",
-            value: computed({
-              get: () => settingStore.lyricGlobalOffset,
-              set: (v) => (settingStore.lyricGlobalOffset = v ?? 0),
-            }),
-            defaultValue: 0,
-          },
-          {
             key: "lyricOffsetStep",
             label: "歌词时延调节步长",
             type: "input-number",

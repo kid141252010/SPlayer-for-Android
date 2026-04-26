@@ -105,15 +105,12 @@ const player = usePlayerController();
 const currentSongId = computed(() => musicStore.playSong?.id as number | undefined);
 
 // 实时播放进度
-const getTotalLyricOffset = () =>
-  settingStore.lyricGlobalOffset + statusStore.getSongOffset(musicStore.playSong?.id);
-
-const playSeek = ref<number>(player.getSeek() + getTotalLyricOffset());
+const playSeek = ref<number>(player.getSeek() + statusStore.getSongOffset(musicStore.playSong?.id));
 
 // 实时更新播放进度
 const { pause: pauseSeek, resume: resumeSeek } = useRafFn(() => {
   const songId = musicStore.playSong?.id;
-  const offsetTime = settingStore.lyricGlobalOffset + statusStore.getSongOffset(songId);
+  const offsetTime = statusStore.getSongOffset(songId);
   playSeek.value = player.getSeek() + offsetTime;
 });
 
