@@ -5,18 +5,18 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  '@applemusic-like-lyrics/ttml': file:.vender/applemusic-like-lyrics-ttml-1.0.0.tgz
+  '@applemusic-like-lyrics/ttml': file:.vendor/applemusic-like-lyrics-ttml-1.0.0.tgz
 
 importers:
 
   .:
     dependencies:
       '@applemusic-like-lyrics/core':
-        specifier: file:.vender/applemusic-like-lyrics-core-0.4.1.tgz
-        version: file:.vender/applemusic-like-lyrics-core-0.4.1.tgz(@pixi/app@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/filter-blur@7.4.3(@pixi/core@7.4.3))(@pixi/filter-bulge-pinch@5.1.1(@pixi/core@7.4.3))(@pixi/filter-color-matrix@7.4.3(@pixi/core@7.4.3))(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))
+        specifier: file:.vendor/applemusic-like-lyrics-core-0.4.1.tgz
+        version: file:.vendor/applemusic-like-lyrics-core-0.4.1.tgz(@pixi/app@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/filter-blur@7.4.3(@pixi/core@7.4.3))(@pixi/filter-bulge-pinch@5.1.1(@pixi/core@7.4.3))(@pixi/filter-color-matrix@7.4.3(@pixi/core@7.4.3))(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))
       '@applemusic-like-lyrics/lyric':
-        specifier: file:.vender/applemusic-like-lyrics-lyric-1.0.0.tgz
-        version: file:.vender/applemusic-like-lyrics-lyric-1.0.0.tgz
+        specifier: file:.vendor/applemusic-like-lyrics-lyric-1.0.0.tgz
+        version: file:.vendor/applemusic-like-lyrics-lyric-1.0.0.tgz
       '@capacitor/android':
         specifier: ^8.0.0
         version: 8.2.0(@capacitor/core@8.2.0)
@@ -270,8 +270,8 @@ importers:
 
 packages:
 
-  '@applemusic-like-lyrics/core@file:.vender/applemusic-like-lyrics-core-0.4.1.tgz':
-    resolution: {integrity: sha512-paNhadd2RO/OekERznuUX/vX4tkI/Ke8/JfOYYOGGcFmo+eYRs1bV7igzvCkcL+8EVg9tyNNy2GViV/9knY3qw==, tarball: file:.vender/applemusic-like-lyrics-core-0.4.1.tgz}
+  '@applemusic-like-lyrics/core@file:.vendor/applemusic-like-lyrics-core-0.4.1.tgz':
+    resolution: {integrity: sha512-/5WvtDbdGaGVXqj7mFKoriRWI35SW5rez1CP8BbV5wZBKSRP4L6B+TvgQY9S81OE6IXK4VNH7HPsUyOP8FipzA==, tarball: file:.vendor/applemusic-like-lyrics-core-0.4.1.tgz}
     version: 0.4.1
     peerDependencies:
       '@pixi/app': '*'
@@ -282,12 +282,12 @@ packages:
       '@pixi/filter-color-matrix': '*'
       '@pixi/sprite': '*'
 
-  '@applemusic-like-lyrics/lyric@file:.vender/applemusic-like-lyrics-lyric-1.0.0.tgz':
-    resolution: {integrity: sha512-vHetLWqG0usNN9Dhj18t6Ot1JkuXFuvmfSnLH/RwVe4KPxYeD3f7uGRbaI45N9micut/LYTGsgSWRNf2pVMkug==, tarball: file:.vender/applemusic-like-lyrics-lyric-1.0.0.tgz}
+  '@applemusic-like-lyrics/lyric@file:.vendor/applemusic-like-lyrics-lyric-1.0.0.tgz':
+    resolution: {integrity: sha512-vHetLWqG0usNN9Dhj18t6Ot1JkuXFuvmfSnLH/RwVe4KPxYeD3f7uGRbaI45N9micut/LYTGsgSWRNf2pVMkug==, tarball: file:.vendor/applemusic-like-lyrics-lyric-1.0.0.tgz}
     version: 1.0.0
 
-  '@applemusic-like-lyrics/ttml@file:.vender/applemusic-like-lyrics-ttml-1.0.0.tgz':
-    resolution: {integrity: sha512-v0Zn3Xi544nhDSvpTt8uVY8cbOktyhICoFtCbPweklOS7pZn4WlQiw6qwhsZZcS/ulm4PtR9JGb81QAVqqopuw==, tarball: file:.vender/applemusic-like-lyrics-ttml-1.0.0.tgz}
+  '@applemusic-like-lyrics/ttml@file:.vendor/applemusic-like-lyrics-ttml-1.0.0.tgz':
+    resolution: {integrity: sha512-v0Zn3Xi544nhDSvpTt8uVY8cbOktyhICoFtCbPweklOS7pZn4WlQiw6qwhsZZcS/ulm4PtR9JGb81QAVqqopuw==, tarball: file:.vendor/applemusic-like-lyrics-ttml-1.0.0.tgz}
     version: 1.0.0
 
   '@babel/code-frame@7.29.0':
@@ -4974,7 +4974,7 @@ packages:
 
 snapshots:
 
-  '@applemusic-like-lyrics/core@file:.vender/applemusic-like-lyrics-core-0.4.1.tgz(@pixi/app@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/filter-blur@7.4.3(@pixi/core@7.4.3))(@pixi/filter-bulge-pinch@5.1.1(@pixi/core@7.4.3))(@pixi/filter-color-matrix@7.4.3(@pixi/core@7.4.3))(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))':
+  '@applemusic-like-lyrics/core@file:.vendor/applemusic-like-lyrics-core-0.4.1.tgz(@pixi/app@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))(@pixi/filter-blur@7.4.3(@pixi/core@7.4.3))(@pixi/filter-bulge-pinch@5.1.1(@pixi/core@7.4.3))(@pixi/filter-color-matrix@7.4.3(@pixi/core@7.4.3))(@pixi/sprite@7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3)))':
     dependencies:
       '@pixi/app': 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))
       '@pixi/core': 7.4.3
@@ -4988,12 +4988,12 @@ snapshots:
       deep-freeze: 0.0.1
       gl-matrix: 4.0.0-beta.2
 
-  '@applemusic-like-lyrics/lyric@file:.vender/applemusic-like-lyrics-lyric-1.0.0.tgz':
+  '@applemusic-like-lyrics/lyric@file:.vendor/applemusic-like-lyrics-lyric-1.0.0.tgz':
     dependencies:
-      '@applemusic-like-lyrics/ttml': file:.vender/applemusic-like-lyrics-ttml-1.0.0.tgz
+      '@applemusic-like-lyrics/ttml': file:.vendor/applemusic-like-lyrics-ttml-1.0.0.tgz
       pako: 2.1.0
 
-  '@applemusic-like-lyrics/ttml@file:.vender/applemusic-like-lyrics-ttml-1.0.0.tgz': {}
+  '@applemusic-like-lyrics/ttml@file:.vendor/applemusic-like-lyrics-ttml-1.0.0.tgz': {}
 
   '@babel/code-frame@7.29.0':
     dependencies:
