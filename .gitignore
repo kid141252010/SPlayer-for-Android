@@ -11,10 +11,10 @@ task.md
 node_modules
 .DS_Store
 dist
-!.vender/
-!.vender/**/
-!.vender/**/dist/
-!.vender/**/dist/**
+!.vendor/
+!.vendor/**/
+!.vendor/**/dist/
+!.vendor/**/dist/**
 dist-ssr
 coverage
 *.local
