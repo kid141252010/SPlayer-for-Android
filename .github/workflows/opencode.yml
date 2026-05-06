@@ -6,6 +6,9 @@ on:
   pull_request_review_comment:
     types: [created]
 
+env:
+  LLM_TYPE: ${{ vars.LLM_TYPE }}
+
 jobs:
   opencode:
     if: |
@@ -17,8 +20,6 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-    env:
-      LLM_TYPE: ${{ secrets.LLM_TYPE }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -33,9 +34,14 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           OPENAI_BASE_URL: ${{ secrets.OPENCODE_API_URL }}
         with:
-          model: openai/${{ secrets.OPENCODE_MODEL }}
+          model: ${{ vars.OPENCODE_MODEL }}
           prompt: |
-            你的名字是「${{ secrets.OPENCODE_NAME }}」，在回复开头用这个名字自我介绍。
+            你的名字是「${{ vars.OPENCODE_NAME }}」，在回复开头用这个名字自我介绍。
+            
+            请根据当前的 issue 或 PR 内容，分析问题并给出具体的解决方案或建议。
+            如果是 bug 报告，请分析可能的原因并提供修复思路。
+            如果是功能请求，请评估可行性并给出实现建议。
+            回复要简洁明了，直接切中要点。
 
       - name: Run OpenCode (Anthropic format)
         if: env.LLM_TYPE == 'anthropic'
@@ -44,6 +50,11 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
           ANTHROPIC_BASE_URL: ${{ secrets.OPENCODE_API_URL }}
         with:
-          model: anthropic/${{ secrets.OPENCODE_MODEL }}
+          model: ${{ vars.OPENCODE_MODEL }}
           prompt: |
-            你的名字是「${{ secrets.OPENCODE_NAME }}」，在回复开头用这个名字自我介绍。
+            你的名字是「${{ vars.OPENCODE_NAME }}」，在回复开头用这个名字自我介绍。
+            
+            请根据当前的 issue 或 PR 内容，分析问题并给出具体的解决方案或建议。
+            如果是 bug 报告，请分析可能的原因并提供修复思路。
+            如果是功能请求，请评估可行性并给出实现建议。
+            回复要简洁明了，直接切中要点。
