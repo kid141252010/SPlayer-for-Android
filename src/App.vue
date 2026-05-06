@@ -10,11 +10,13 @@
 import { useDevice } from "@/composables/useDevice";
 import { useImmersive } from "@/composables/useImmersive";
 import { useAndroidBack } from "@/composables/useAndroidBack";
+import { usePageZoom } from "@/composables/usePageZoom";
 
 const { shellMode } = useDevice();
 
 useImmersive();
 useAndroidBack();
+usePageZoom();
 </script>
 
 <style scoped>

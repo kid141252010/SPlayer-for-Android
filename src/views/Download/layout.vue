@@ -235,5 +235,36 @@ onActivated(() => {
     overflow: hidden;
     max-height: calc((var(--layout-height) - 132) * 1px);
   }
+
+  @media (max-width: 768px) {
+    .title {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      height: auto;
+      margin-top: 8px;
+      margin-bottom: 14px;
+      .keyword {
+        font-size: 24px;
+        margin-right: 0;
+      }
+      .status {
+        font-size: 13px;
+        line-height: 22px;
+      }
+    }
+    .menu {
+      height: auto;
+      margin-bottom: 12px;
+      row-gap: 10px;
+      .n-tabs {
+        width: 100%;
+      }
+    }
+    .router-view {
+      max-height: none;
+      min-height: 0;
+    }
+  }
 }
 </style>

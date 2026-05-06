@@ -30,24 +30,23 @@
           <!-- 全屏封面 -->
           <PlayerCover v-if="showFullScreenCover" />
           <!-- 主内容 -->
+          <!-- 切歌不再 unmount/remount 整个 player-content（之前 :key 含 playSong.id 会导致每次切歌都缩放重建，视觉抖动）；
+               仅当布局形态切换（pureLyricMode 等）时才走 zoom 过渡 -->
           <Transition name="zoom" mode="out-in">
             <div
               :key="playerContentKey"
               :class="['player-content', playerContentClasses]"
               @mousemove="playerMove"
             >
-              <!-- 左侧封面和数据 -->
-              <Transition name="zoom">
-                <div
-                  v-if="showLeftContent"
-                  :key="musicStore.playSong.id"
-                  class="content-left"
-                  :style="layoutStyles.left"
-                >
-                  <PlayerCover />
-                  <PlayerData :center="playerDataCenter" />
-                </div>
-              </Transition>
+              <!-- 左侧封面和数据：内部组件自己负责歌曲信息切换的过渡，外层不再用 :key=playSong.id 的 zoom 动画 -->
+              <div
+                v-if="showLeftContent"
+                class="content-left"
+                :style="layoutStyles.left"
+              >
+                <PlayerCover />
+                <PlayerData :center="playerDataCenter" />
+              </div>
               <!-- 半屏评论（左或右） -->
               <PlayerComment
                 v-if="isHalfComment"
@@ -141,8 +140,8 @@ const isHalfComment = computed(() => commentDisplayMode.value !== "fullscreen" &
 /** 是否全屏评论 */
 const isFullscreenComment = computed(() => showComment.value && !isHalfComment.value);
 
-/** 主内容 key */
-const playerContentKey = computed(() => `${musicStore.playSong.id}-${statusStore.pureLyricMode}`);
+/** 主内容 key（仅在布局形态变化时切换，不在切歌时切换，避免抖动） */
+const playerContentKey = computed(() => `${statusStore.pureLyricMode ? "pure" : "normal"}`);
 
 /** 主内容 class */
 const playerContentClasses = computed(() => ({

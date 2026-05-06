@@ -98,7 +98,7 @@ watch(
   display: flex;
   flex-direction: column;
   padding-bottom: 20px;
-  
+
   .title {
     display: flex;
     align-items: flex-end;
@@ -106,32 +106,32 @@ watch(
     margin-top: 12px;
     margin-bottom: 20px;
     height: 40px;
-    
+
     .keyword {
       font-size: 30px;
       font-weight: bold;
       margin-right: 12px;
       line-height: normal;
     }
-    
+
     .status {
       font-size: 15px;
       font-weight: normal;
       line-height: 30px;
-      
+
       .item {
         display: flex;
         align-items: center;
         opacity: 0.9;
         cursor: pointer;
-        
+
         .n-icon {
           margin-right: 4px;
         }
       }
     }
   }
-  
+
   // 手机版适配
   @media (max-width: 768px) {
     padding: 0 0 20px;
@@ -144,7 +144,7 @@ watch(
       .keyword {
         font-size: 24px;
       }
-      
+
       .status {
         font-size: 13px;
       }
@@ -154,7 +154,7 @@ watch(
       margin-bottom: 8px;
     }
   }
-  
+
   // 512px
   @media (max-width: 512px) {
     .status {

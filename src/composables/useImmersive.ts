@@ -39,11 +39,27 @@ export const useImmersive = () => {
     }, delay);
   };
 
-  const handleFocus = () => scheduleImmersive(120);
-  const handleResize = () => scheduleImmersive(220);
-  const handleOrientationChange = () => scheduleImmersive(260);
+  const handleFocus = () => {
+    if (useSettingStore().androidShowStatusBar) return;
+    scheduleImmersive(120);
+  };
+  const handleResize = () => {
+    if (useSettingStore().androidShowStatusBar) return;
+    scheduleImmersive(220);
+  };
+  const handleOrientationChange = () => {
+    if (useSettingStore().androidShowStatusBar) {
+      void StatusBar.show().catch(() => {});
+      return;
+    }
+    scheduleImmersive(260);
+  };
   const handleVisibilityChange = () => {
     if (document.visibilityState === "visible") {
+      if (useSettingStore().androidShowStatusBar) {
+        void StatusBar.show().catch(() => {});
+        return;
+      }
       scheduleImmersive();
     }
   };

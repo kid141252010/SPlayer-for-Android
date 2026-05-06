@@ -5,7 +5,8 @@
         <n-text class="name">{{ item?.label || "本地歌词覆盖在线歌词" }}</n-text>
         <n-text class="tip" :depth="3" v-if="item?.description" v-html="item.description" />
         <n-text class="tip" :depth="3" v-else-if="isCapacitorAndroid">
-          选择 TTML 歌词目录，按文件元数据里的网易云 ID 匹配歌曲 <br />
+          选择歌词目录，支持 .ttml 和 .lrc 格式 <br />
+          TTML 按元数据里的网易云 ID 匹配，LRC 按文件名中的 ID 匹配 <br />
           添加后会自动扫描
         </n-text>
         <n-text class="tip" :depth="3" v-else>
@@ -42,7 +43,7 @@
       <n-collapse-transition :show="hasAndroidScanMeta">
         <n-flex class="scan-summary" align="center" :size="8">
           <n-text :depth="3">最近扫描：{{ scanTimeText }}</n-text>
-          <n-tag size="small">TTML {{ androidScanMeta.totalFiles }}</n-tag>
+          <n-tag size="small">歌词 {{ androidScanMeta.totalFiles }}</n-tag>
           <n-tag size="small" type="success">命中 {{ androidScanMeta.matchedFiles }}</n-tag>
           <n-tag size="small" type="warning">重复 {{ androidScanMeta.duplicateIds }}</n-tag>
           <n-tag size="small" :type="androidScanMeta.failedFiles ? 'error' : 'default'">
@@ -182,7 +183,7 @@ const scanAndroidLyricDirectories = async (showSuccess = true) => {
     if (summary.failedFiles > 0) {
       window.$message.warning(`扫描完成，${summary.failedFiles} 个文件读取失败`);
     } else if (showSuccess) {
-      window.$message.success(`扫描完成，命中 ${summary.matchedFiles} 个 TTML 文件`);
+      window.$message.success(`扫描完成，命中 ${summary.matchedFiles} 个歌词文件`);
     }
     return true;
   } catch (error) {

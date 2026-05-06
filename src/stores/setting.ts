@@ -263,6 +263,12 @@ export interface SettingState {
   androidLyricIndexMap: Record<string, AndroidLyricIndexEntry>;
   /** Android 本地歌词扫描信息 */
   androidLyricScanMeta: AndroidLyricScanMeta;
+  /** Android 下载目录 SAF URI */
+  androidDownloadDirectoryUri: string;
+  /** Android 本地音乐目录列表（SAF URI） */
+  androidLocalMusicDirectories: { uri: string; name: string }[];
+  /** 页面缩放（百分比，70-150，默认 100） */
+  pageZoom: number;
   /** 本地文件分隔符 */
   localSeparators: string[];
   /** 显示本地封面 */
@@ -626,6 +632,9 @@ export const useSettingStore = defineStore("setting", {
       duplicateIds: 0,
       failedFiles: 0,
     },
+    androidDownloadDirectoryUri: "",
+    androidLocalMusicDirectories: [],
+    pageZoom: 100,
     showDefaultLocalPath: true,
     localFolderDisplayMode: "tab",
     localSeparators: ["/", "&"],

@@ -14,6 +14,7 @@ export interface AndroidLyricIndexEntry {
   name: string;
   lastModified: number;
   directoryUri: string;
+  format: "ttml" | "lrc";
 }
 
 export interface AndroidLyricScanMeta {
@@ -36,12 +37,18 @@ export interface AndroidLyricScanSummary extends Omit<AndroidLyricScanMeta, "las
   failures?: AndroidLyricScanFailure[];
 }
 
+export interface AndroidSidecarLyricResult {
+  content: string;
+  format: "ttml" | "lrc" | "yrc";
+}
+
 export interface AndroidLocalLyricPlugin {
   pickLyricDirectory(): Promise<AndroidLyricPickResult>;
   scanLyricDirectories(options: {
     directories: AndroidLyricDirectory[];
   }): Promise<AndroidLyricScanSummary>;
   readLyricFile(options: { uri: string }): Promise<{ content: string }>;
+  findSidecarLyric(options: { audioPath: string }): Promise<AndroidSidecarLyricResult>;
 }
 
 export const AndroidLocalLyric = registerPlugin<AndroidLocalLyricPlugin>("AndroidLocalLyric");

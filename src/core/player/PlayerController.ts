@@ -205,6 +205,11 @@ class PlayerController {
 
     musicStore.playSong = song;
     statusStore.currentTime = startSeek;
+    // 用元数据的 duration 立刻填上 statusStore.duration，否则进度条 max=0 会把所有 seek 钳到 0
+    // （ExoPlayer 在 autoPlay=false 暂停态下 progressRunnable 不跑，duration 永远到不了 TS）
+    if (typeof song.duration === "number" && song.duration > 0) {
+      statusStore.duration = song.duration;
+    }
     // 重置进度
     statusStore.progress = 0;
     statusStore.lyricIndex = -1;
@@ -787,27 +792,60 @@ class PlayerController {
     const statusStore = useStatusStore();
 
     let nextSong: SongType | undefined;
+    // 是否通过 ID 匹配定位到（false 时走"下一索引"兜底）
+    let matchedById = false;
 
     if (statusStore.personalFmMode) {
-      const nextIndex = musicStore.personalFM.list.findIndex((song) => song.id === songId);
+      const fmList = musicStore.personalFM.list;
+      const nextIndex =
+        typeof songId === "number" && songId > 0
+          ? fmList.findIndex((song) => song.id === songId)
+          : -1;
       if (nextIndex !== -1) {
         musicStore.personalFM.playIndex = nextIndex;
-        nextSong = musicStore.personalFM.list[nextIndex];
+        nextSong = fmList[nextIndex];
+        matchedById = true;
+      } else {
+        // 兜底：私人 FM 默认推进到下一首
+        const fallbackIndex = Math.min(musicStore.personalFM.playIndex + 1, fmList.length - 1);
+        if (fallbackIndex >= 0 && fmList[fallbackIndex]) {
+          musicStore.personalFM.playIndex = fallbackIndex;
+          nextSong = fmList[fallbackIndex];
+        }
       }
     } else {
-      const nextIndex = dataStore.playList.findIndex((song) => song.id === songId);
-      if (nextIndex !== -1) {
-        statusStore.playIndex = nextIndex;
-        nextSong = dataStore.playList[nextIndex];
+      const playList = dataStore.playList;
+      const playListLength = playList.length;
+      const lookupIndex =
+        typeof songId === "number" && songId > 0
+          ? playList.findIndex((song) => song.id === songId)
+          : -1;
+      if (lookupIndex !== -1) {
+        statusStore.playIndex = lookupIndex;
+        nextSong = playList[lookupIndex];
+        matchedById = true;
+      } else if (playListLength > 0) {
+        // 兜底：自动播放器永远会推进到 playIndex+1
+        // 即便 ID 不匹配（流媒体/本地哈希 ID/songId=0 等场景），也保证 UI 能跟上
+        const fallbackIndex = (statusStore.playIndex + 1) % playListLength;
+        statusStore.playIndex = fallbackIndex;
+        nextSong = playList[fallbackIndex];
       }
     }
 
     if (!nextSong) {
+      console.warn("[Android] applyNativeAutoNext: 未能定位下一首歌曲", { songId });
       return;
     }
+    if (!matchedById) {
+      console.warn(
+        "[Android] applyNativeAutoNext: songId 未匹配到列表，已通过下一索引兜底",
+        { songId, fallbackId: nextSong.id },
+      );
+    }
 
-    if (typeof liked === "boolean") {
-      this.applySongLikeState(songId, liked);
+    if (typeof liked === "boolean" && typeof nextSong.id === "number") {
+      this.applySongLikeState(nextSong.id, liked);
     }
 
     this.setupSongUI(nextSong, 0);
@@ -823,6 +861,13 @@ class PlayerController {
     try {
       const musicStore = useMusicStore();
       if (musicStore.playSong.type === "streaming") return;
+      // Android: 没有 Electron IPC，跳过封面/元数据 IPC，仅做媒体会话刷新
+      if (typeof window === "undefined" || !window.electron?.ipcRenderer) {
+        getCoverColor(musicStore.playSong.cover);
+        mediaSessionManager.updateMetadata();
+        await this.syncAndroidPlaybackContext(musicStore.playSong);
+        return;
+      }
       const statusStore = useStatusStore();
       const blobURLManager = useBlobURLManager();
       // Blob URL 清理
@@ -993,16 +1038,13 @@ class PlayerController {
         const elapsed = Date.now() - this.lastSeekTimestamp;
         if (elapsed < 3000) {
           const drift = Math.abs(currentTime - this.lastSeekTargetMs);
-          // 允许与目标偏差不超过 3 秒的更新，其余视为过期数据
           if (drift > 3000) {
             return;
           }
         } else {
-          // 超过防护窗口，清除标记
           this.lastSeekTimestamp = 0;
         }
       }
-      useAutomixManager().updateAutomixMonitoring();
       // 计算歌词索引
       const songId = musicStore.playSong?.id;
       const offset = statusStore.getSongOffset(songId);
@@ -1064,6 +1106,14 @@ class PlayerController {
       const errCode = e.detail.errorCode;
       this.handlePlaybackError(errCode, this.getSeek());
     });
+  }
+
+  /**
+   * 重新绑定 AudioManager 事件监听
+   * 用于 destroyAudioManager() 销毁旧单例后，将事件监听切换到新 AudioManager
+   */
+  public rebindAudioEvents() {
+    this.bindAudioEvents();
   }
 
   /**
@@ -1315,8 +1365,15 @@ class PlayerController {
     }
     const statusStore = useStatusStore();
     const audioManager = useAudioManager();
-    const safeTime = Math.max(0, Math.min(time, this.getDuration()));
-    // 记录 seek 防护信息，防止原生异步事件携带的旧位置覆盖进度
+    // duration <= 0 时（如 ExoPlayer 还在缓冲），不能用它截 time，否则所有 seek 都被裁成 0
+    const knownDuration = this.getDuration();
+    const safeTime =
+      knownDuration > 0 ? Math.max(0, Math.min(time, knownDuration)) : Math.max(0, time);
+    // 调试：追踪 seek-to-zero
+    if (safeTime < 100 && statusStore.currentTime > 3000) {
+      console.warn(`[PC] setSeek BLOCKED: time=${time} safeTime=${safeTime} current=${statusStore.currentTime} stack=${new Error().stack?.split('\n').slice(1,4).join(' <- ')}`);
+      return;
+    }
     this.lastSeekTimestamp = Date.now();
     this.lastSeekTargetMs = safeTime;
     audioManager.seek(safeTime / 1000);

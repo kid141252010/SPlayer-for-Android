@@ -6,6 +6,7 @@
       {
         show: musicStore.isHasPlayer && statusStore.showPlayBar,
         player: statusStore.showFullPlayer,
+        'phone-floating': isPhone,
       },
     ]"
   >
@@ -249,6 +250,7 @@ import { useSongManager } from "@/core/player/SongManager";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { toLikeSong } from "@/utils/auth";
 import { useTimeFormat } from "@/composables/useTimeFormat";
+import { useDevice } from "@/composables/useDevice";
 import { useSwipe } from "@vueuse/core";
 import { copyData, coverLoaded, renderIcon, getShareUrl } from "@/utils/helper";
 import {
@@ -271,6 +273,8 @@ const settingStore = useSettingStore();
 
 const player = usePlayerController();
 const songManager = useSongManager();
+
+const { isPhone } = useDevice();
 
 const { timeDisplay, toggleTimeFormat } = useTimeFormat();
 
@@ -699,42 +703,42 @@ const showCreatorTip = () => window.$message.info("暂不支持查看主播主�
       }
     }
   }
-  
+
   // 手机版适配（768px 以下）
   @media (max-width: 768px) {
     height: 76px;
     padding: 0 12px;
-    
+
     .play-data {
       padding-left: 60px;
-      
+
       .cover {
         width: 48px;
         height: 48px;
         min-width: 48px;
         border-radius: 6px;
-        
+
         :deep(img) {
           width: 48px;
           height: 48px;
         }
       }
-      
+
       .info {
         .data {
           .name {
             font-size: 14px;
           }
-          
+
           .like,
           .more {
             margin-left: 6px;
           }
         }
-        
+
         .lyric-container {
           height: 20px;
-          
+
           .lyric,
           .artists {
             font-size: 12px;
@@ -742,26 +746,110 @@ const showCreatorTip = () => window.$message.info("暂不支持查看主播主�
         }
       }
     }
-    
+
     .play-control {
       .play-pause {
         --n-width: 40px;
         --n-height: 40px;
       }
-      
+
       .play-icon {
         width: 34px;
         height: 34px;
-        
+
         .n-icon {
           font-size: 22px;
         }
       }
     }
-    
+
     .play-menu {
       .time {
         font-size: 11px;
+      }
+    }
+  }
+
+  // 手机浮岛模式：圆角悬浮在底栏之上
+  &.phone-floating {
+    --phone-bar-height: 64px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    height: var(--phone-bar-height);
+    padding: 0 10px;
+    border-radius: 18px;
+    background-color: var(--surface-container-hex);
+    box-shadow:
+      0 6px 20px rgba(0, 0, 0, 0.18),
+      0 1px 3px rgba(0, 0, 0, 0.08);
+    bottom: calc(-1 * (var(--phone-bar-height) + 24px));
+    transition:
+      bottom 0.32s var(--n-bezier),
+      box-shadow 0.3s var(--n-bezier);
+
+    &.show {
+      bottom: calc(var(--phone-nav-total-height) + var(--phone-player-gap));
+    }
+
+    .player-slider {
+      width: calc(100% - 20px);
+      left: 10px;
+      top: -7px;
+      --n-rail-height: 3px;
+      --n-handle-size: 12px;
+    }
+
+    .play-data {
+      padding-left: 56px;
+
+      .cover {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        border-radius: 7px;
+        margin-right: 10px;
+
+        :deep(img) {
+          width: 44px;
+          height: 44px;
+        }
+      }
+
+      .info {
+        .data {
+          .name {
+            font-size: 13px;
+          }
+          .like,
+          .more {
+            margin-left: 5px;
+          }
+        }
+        .lyric-container {
+          height: 18px;
+          .lyric,
+          .artists {
+            font-size: 11px;
+          }
+        }
+      }
+    }
+
+    .play-control {
+      margin: 0 0 0 8px;
+      .play-pause {
+        --n-width: 38px;
+        --n-height: 38px;
+        margin: 0 2px;
+      }
+      .play-icon {
+        width: 32px;
+        height: 32px;
+        margin: 0;
+        .n-icon {
+          font-size: 20px;
+        }
       }
     }
   }

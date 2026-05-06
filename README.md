@@ -1,8 +1,8 @@
 # 🎵 SPlayer for Android
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-3.0.0--rc.2-blue?style=flat-square" alt="version">
-  <img src="https://img.shields.io/badge/platform-Android%2011%2B-3DDC84?style=flat-square&logo=android&logoColor=white" alt="platform">
+  <img src="https://img.shields.io/badge/version-3.0.0--rc.3-blue?style=flat-square" alt="version">
+  <img src="https://img.shields.io/badge/platform-Android%2010%2B-3DDC84?style=flat-square&logo=android&logoColor=white" alt="platform">
   <img src="https://img.shields.io/badge/license-AGPL--3.0-red?style=flat-square" alt="license">
   <img src="https://img.shields.io/badge/Vue-3-4FC08D?style=flat-square&logo=vue.js&logoColor=white" alt="vue">
   <img src="https://img.shields.io/badge/Capacitor-8-119EFF?style=flat-square&logo=capacitor&logoColor=white" alt="capacitor">
@@ -38,17 +38,35 @@
 
 ## ✨ 特性一览
 
-| 分类 | 描述 |
-| --- | --- |
-| 🎨 **双端 UI** | 手机 / 平板自适应布局，沉浸式全屏，状态栏可切换 |
-| 🎵 **播放引擎** | 基于 `HTMLAudioElement`，WebView 下长时间后台稳定 |
-| 📝 **逐字歌词** | 毫秒级插值高亮，翻译 / 罗马音，拖动吸附最近行 |
-| 🪟 **桌面歌词** | `WindowManager` 悬浮窗，逐字动画、锁定穿透、拖拽、播控 |
-| 🔔 **通知栏** | 原生 `MediaSession`，完整播控，支持桌面歌词一键开关 |
-| 🎚️ **精细控制** | 渐入渐出、进度吸附歌词、允许与其他应用同时播放 |
-| 🌐 **在线音乐** | 网易云 + Jellyfin / Navidrome / Emby / Subsonic / Last.fm |
-| 🧩 **内置 API** | `nodejs-mobile-cordova` 嵌入网易云 API，离线可用 |
-| 📦 **分架构打包** | `arm64-v8a` / `armeabi-v7a` / `x86_64` / `x86` 独立 APK |
+| 分类              | 描述                                                                                  |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| 🎨 **双端 UI**    | 手机 / 平板自适应布局，沉浸式全屏，状态栏可切换                                       |
+| 📐 **手机端布局** | 全宽贴底底栏 + 圆角浮岛播放栏，底栏选中态滑动指示器；列表 / 卡片 / 设置项轻度紧凑     |
+| 🔍 **页面缩放**   | 50%–150% 全局缩放，缩小后等效视口变宽，达到阈值可切换 Pad 布局（尚未完全适配）        |
+| 🎵 **播放引擎**   | 原生 ExoPlayer + WebView 双引擎，长时间后台稳定，seek / gapless 切歌进度条同步        |
+| 📝 **逐字歌词**   | 毫秒级插值高亮，翻译 / 罗马音，拖动吸附最近行，支持全局歌词偏移                       |
+| 📂 **本地音乐**   | 自动扫描本地歌曲，支持 TTML / LRC 歌词匹配（同目录 / 独立歌词目录），与桌面端行为对齐 |
+| ☁️ **WebDAV 音乐** | 通过 WebDAV 连接远程音乐，在线播放与浏览，扩展私人曲库                                  |
+| 🪟 **桌面歌词**   | `WindowManager` 悬浮窗，逐字动画、锁定穿透、拖拽、播控                                |
+| 🔔 **通知栏**     | 原生 `MediaSession`，完整播控，支持桌面歌词一键开关                                   |
+| 🎚️ **精细控制**   | 渐入渐出、进度吸附歌词、允许与其他应用同时播放                                        |
+| 🌐 **在线音乐**   | 网易云 + Jellyfin / Navidrome / Emby / Subsonic / OpenSubsonic / Last.fm              |
+| 🔗 **网络代理**   | 支持配置 HTTP/HTTPS 代理，内置逆向 API 请求可走代理访问网易云接口                     |
+| ⬇️ **音乐下载**   | 开发者模式下可下载歌曲至 SAF 授权目录，支持自定义子目录分类、歌词/ASS 附件下载        |
+| 🧩 **内置 API**   | `nodejs-mobile-cordova` 嵌入网易云 API，离线可用                                      |
+| 📦 **分架构打包** | `arm64-v8a` / `armeabi-v7a` / `x86_64` / `x86` 独立 APK                               |
+
+---
+
+## 📱 平台兼容性
+
+**最低要求：Android 10（API 29）**
+
+> ⚠️ 更早的 Android 版本（Android 9 及以下）没有计划去实现支持。原因是：
+>
+> - 旧版 Android 性能不足以流畅运行本应用的 WebView 渲染和音频处理
+> - Android 10 以下可用的系统 API 较少，无法实现 SAF 文件访问、MediaStyle 通知、深色模式适配等核心功能
+> - 这些版本的设备硬件早已过时，完全不适合运行本应用
 
 ---
 
@@ -56,24 +74,39 @@
 
 前往 [**Releases**](../../releases) 选择对应 CPU 架构的 APK：
 
-| ABI | 适用设备 | 推荐度 |
-| :---: | --- | :---: |
-| **`arm64-v8a`** | 绝大多数现代手机 / 平板 | ⭐⭐⭐⭐⭐ |
-| `armeabi-v7a` | 2015 年前的老旧 32 位 ARM 设备 | ⭐⭐ |
-| `x86_64` | Intel 平板、Android 模拟器 | ⭐ |
-| `x86` | 极少数 32 位 Intel 设备 | ⭐ |
+|       ABI       | 适用设备                       |   推荐度   |
+| :-------------: | ------------------------------ | :--------: |
+| **`arm64-v8a`** | 绝大多数现代手机 / 平板        | ⭐⭐⭐⭐⭐ |
+|  `armeabi-v7a`  | 2015 年前的老旧 32 位 ARM 设备 |    ⭐⭐    |
+|    `x86_64`     | Intel 平板、Android 模拟器     |     ⭐     |
+|      `x86`      | 极少数 32 位 Intel 设备        |     ⭐     |
 
 > 💡 不清楚自己设备架构？装个 **CPU-Z**，或者无脑选 `arm64-v8a`——99% 都是它。
 
 ---
 
-## 🆕 v3.0.0-rc.2 更新
+## 🆕 更新日志
 
-- 🔄 修复 **横竖屏切换** 时部分界面布局错乱
-- 📱 修复 **手机小屏** 下文字挤压成一团的问题
-- ⬆️ 调整 **"回到顶部"按钮** 位置，不再遮挡其他控件
-- 🎨 修复 **桌面歌词** 在未开启文本背景遮罩时、锁定状态下仍显示背景的 bug
-- 📦 GitHub Actions 构建改为 **分架构打包**，单包体积更小
+> 完整更新记录请查看 [**CHANGELOG.md**](./CHANGELOG.md)
+
+**v3.0.0-rc.3** 主要更新：
+
+- ☁️ 新增 **WebDAV 音乐源** — 支持通过 WebDAV 连接并播放远程音乐
+- 🎵 新增 **本地歌曲** — 扫描本地音乐文件，与在线曲库统一管理
+- 🔍 新增 **页面缩放** — 50%–150% 全局缩放（尚未完全适配，欢迎 PR 帮忙完善；没有 PR 的话也尽量在下个版本彻底做好）
+- 📂 新增本地 TTML/LRC 歌词支持（歌词目录扫描 + 同目录查找）
+- 🔗 新增网络代理设置（HTTP/HTTPS 代理用于内置 API 请求）
+- ⬇️ 新增音乐下载（开发者模式 + SAF 目录选择）
+- 🌐 完善流媒体支持（Navidrome / Jellyfin / Emby / Subsonic / OpenSubsonic）
+- 📐 重做手机端底栏 / 播放栏布局（全宽贴底底栏 + 圆角浮岛播放栏 + 滑动指示器）
+- 🎯 手机端整体轻度紧凑约 -15%（平板保持原样）
+- 🔧 修复显示系统状态栏滑动后自动隐藏的问题
+- 🔧 修复允许与其他应用同时播放无效的问题
+- 🔧 修复 Android 触控跳转异常
+- 🔧 修复跳转后 seek 位置丢失回到 0:00
+- 🔧 修复自动切下一首进度条跳到非 0:00 错误位置
+- 🎚️ 新增全局歌词偏移设置（PR #11）
+- 📱 最低兼容性调整为 Android 10
 
 ---
 
@@ -81,12 +114,12 @@
 
 ### 环境要求
 
-| 工具 | 版本 |
-| --- | --- |
-| Node.js | `>= 20` |
-| pnpm | `>= 10` |
-| JDK | `21` |
-| Android SDK / NDK | 最新 |
+| 工具              | 版本    |
+| ----------------- | ------- |
+| Node.js           | `>= 20` |
+| pnpm              | `>= 10` |
+| JDK               | `21`    |
+| Android SDK / NDK | 最新    |
 
 ### 一键构建
 
@@ -128,7 +161,7 @@ npx cap open android            # Android Studio 打开
 
 进入 **设置 → 播放 → 允许与其他应用同时播放**。
 
-> ⚠️ 注意：当前 Android 播放走 `HTMLAudioElement`，该选项的实际效果依赖 WebView 版本与系统音频焦点策略，部分设备上行为可能不完全一致。
+> ⚠️ 注意：开启后将切换为 ExoPlayer 引擎（handleAudioFocus=false），不再抢占音频焦点，可与其他应用同时播放。
 
 </details>
 
@@ -169,6 +202,29 @@ npx cap open android            # Android Studio 打开
 
 </details>
 
+<details>
+<summary><b>📂 本地歌词不显示？</b></summary>
+
+<br>
+
+1. 进入 **设置 → 本地与缓存 → 本地歌词覆盖在线歌词**，添加歌词所在目录
+2. 歌词文件可按 `歌曲ID.ttml` / `歌曲ID.lrc` 或 `歌名.歌曲ID.ttml` / `歌名.歌曲ID.lrc` 命名
+3. TTML 文件内含 `ncmMusicId` 元数据的也可自动匹配
+4. 放在音乐同目录下、与音频同名的歌词文件（如 `歌曲名.lrc`）也会自动识别
+
+</details>
+
+<details>
+<summary><b>⬇️ 如何下载歌曲？</b></summary>
+
+<br>
+
+1. 进入 **设置 → 常规**，连续点击版本号 5 次开启开发者模式
+2. 在 **设置 → 本地与缓存 → 下载配置** 中选择下载目录（SAF 授权）
+3. 在歌曲列表中点击菜单即可看到下载选项
+
+</details>
+
 ---
 
 ## 💬 交流 & 反馈
@@ -198,12 +254,12 @@ npx cap open android            # Android Studio 打开
 
 签名所需 Secrets：
 
-| Secret | 说明 |
-| --- | --- |
-| `ANDROID_KEYSTORE_BASE64` | Keystore 的 Base64 编码 |
-| `ANDROID_KEYSTORE_PASSWORD` | Keystore 密码 |
-| `ANDROID_KEY_ALIAS` | Key 别名 |
-| `ANDROID_KEY_PASSWORD` | Key 密码 |
+| Secret                      | 说明                    |
+| --------------------------- | ----------------------- |
+| `ANDROID_KEYSTORE_BASE64`   | Keystore 的 Base64 编码 |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore 密码           |
+| `ANDROID_KEY_ALIAS`         | Key 别名                |
+| `ANDROID_KEY_PASSWORD`      | Key 密码                |
 
 详细说明见 [`.github/ANDROID_RELEASE_SECRETS.md`](./.github/ANDROID_RELEASE_SECRETS.md)。
 

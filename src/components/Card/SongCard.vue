@@ -258,6 +258,32 @@ const albumName = computed(() => {
 .song-card {
   height: 90px;
   cursor: pointer;
+
+  // 手机端紧凑：保持外层高度（虚拟滚动依赖固定 itemHeight=90），只压内边距 / cover / 字号
+  @media (max-width: 768px) {
+    .song-content {
+      padding: 6px 10px;
+    }
+    .title {
+      padding: 4px 14px 4px 0;
+      .cover {
+        width: 46px;
+        height: 46px;
+        min-width: 46px;
+        border-radius: 7px;
+        margin-right: 10px;
+      }
+      .info {
+        .name {
+          font-size: 14px;
+        }
+        .desc {
+          font-size: 12px;
+        }
+      }
+    }
+  }
+
   .song-content {
     display: flex;
     flex-direction: row;

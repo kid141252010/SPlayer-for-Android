@@ -40,7 +40,9 @@
     </template>
     <!-- 桌面歌词 -->
     <n-badge
-      v-if="(isElectron || isCapacitorAndroid) && settingStore.fullscreenPlayerElements.desktopLyric"
+      v-if="
+        (isElectron || isCapacitorAndroid) && settingStore.fullscreenPlayerElements.desktopLyric
+      "
       value="ON"
       :show="statusStore.showDesktopLyric"
       class="hidden"

@@ -11,7 +11,7 @@ import type {
   StreamingPlaylistType,
 } from "@/types/streaming";
 import { SongType } from "@/types/main";
-import { subsonic, jellyfin, emby } from "@/api/streaming";
+import { subsonic, jellyfin, emby, webdav } from "@/api/streaming";
 import localforage from "localforage";
 
 // 创建存储实例
@@ -177,6 +177,14 @@ const createStreamingStore = () => {
           serverName: config.name,
           serverVersion: pingResult.version,
         };
+      } else if (config.type === "webdav") {
+        // WebDAV：用 PROPFIND 库根做连通性测试
+        const pingResult = await webdav.ping(config);
+        return {
+          connected: true,
+          serverName: config.name,
+          serverVersion: pingResult.version,
+        };
       } else {
         // Subsonic API (Navidrome / OpenSubsonic)
         const pingResult = await subsonic.ping(config);
@@ -272,6 +280,8 @@ const createStreamingStore = () => {
         result = await jellyfin.getRandomSongs(server, count);
       } else if (server.type === "emby") {
         result = await emby.getRandomSongs(server, count);
+      } else if (server.type === "webdav") {
+        result = await webdav.getRandomSongs(server, count);
       } else {
         result = await subsonic.getRandomSongs(server, count);
       }
@@ -308,6 +318,8 @@ const createStreamingStore = () => {
         result = await jellyfin.getSongs(server, offset, size);
       } else if (server.type === "emby") {
         result = await emby.getSongs(server, offset, size);
+      } else if (server.type === "webdav") {
+        result = await webdav.getSongs(server, offset, size);
       } else {
         result = await subsonic.getSongs(server, offset, size);
       }
@@ -341,6 +353,8 @@ const createStreamingStore = () => {
         result = await jellyfin.getArtists(server);
       } else if (server.type === "emby") {
         result = await emby.getArtists(server);
+      } else if (server.type === "webdav") {
+        result = await webdav.getArtists(server);
       } else {
         result = await subsonic.getArtists(server);
       }
@@ -370,6 +384,8 @@ const createStreamingStore = () => {
         result = await jellyfin.getAlbums(server);
       } else if (server.type === "emby") {
         result = await emby.getAlbums(server);
+      } else if (server.type === "webdav") {
+        result = await webdav.getAlbums(server);
       } else {
         result = await subsonic.getAlbumList(server, "alphabeticalByName");
       }
@@ -399,6 +415,8 @@ const createStreamingStore = () => {
         result = await jellyfin.getPlaylists(server);
       } else if (server.type === "emby") {
         result = await emby.getPlaylists(server);
+      } else if (server.type === "webdav") {
+        result = await webdav.getPlaylists(server);
       } else {
         result = await subsonic.getPlaylists(server);
       }
@@ -425,6 +443,8 @@ const createStreamingStore = () => {
         return await jellyfin.getAlbumItems(server, albumId);
       } else if (server.type === "emby") {
         return await emby.getAlbumItems(server, albumId);
+      } else if (server.type === "webdav") {
+        return await webdav.getAlbumItems(server, albumId);
       } else {
         const result = await subsonic.getAlbum(server, albumId);
         return result.songs;
@@ -447,6 +467,8 @@ const createStreamingStore = () => {
         return await jellyfin.getPlaylistItems(server, playlistId);
       } else if (server.type === "emby") {
         return await emby.getPlaylistItems(server, playlistId);
+      } else if (server.type === "webdav") {
+        return await webdav.getPlaylistItems(server, playlistId);
       } else {
         const result = await subsonic.getPlaylist(server, playlistId);
         return result.songs;
@@ -477,6 +499,8 @@ const createStreamingStore = () => {
         return await jellyfin.search(server, query);
       } else if (server.type === "emby") {
         return await emby.search(server, query);
+      } else if (server.type === "webdav") {
+        return await webdav.search(server, query);
       } else {
         return await subsonic.search(server, query);
       }
@@ -498,6 +522,9 @@ const createStreamingStore = () => {
         return await jellyfin.getLyrics(server, song.originalId);
       } else if (server.type === "emby" && song.originalId) {
         return await emby.getLyrics(server, song.originalId);
+      } else if (server.type === "webdav") {
+        // WebDAV 没有歌词接口
+        return "";
       } else {
         // 优先使用 ID 获取
         if (song.originalId) {
@@ -527,6 +554,10 @@ const createStreamingStore = () => {
 
     if (server.type === "emby" && server.accessToken && song.originalId) {
       return emby.getAudioStreamUrl(server, song.originalId);
+    }
+
+    if (server.type === "webdav" && song.originalId) {
+      return webdav.getStreamUrl(server, song.originalId);
     }
 
     return song.streamUrl || "";

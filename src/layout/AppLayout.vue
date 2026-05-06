@@ -126,16 +126,12 @@
     </div>
 
     <Transition name="fade">
-      <nav
-        v-if="isPhone && !statusStore.showFullPlayer"
-        :class="[
-          'mobile-bottom-nav',
-          { 'is-raised': musicStore.isHasPlayer && statusStore.showPlayBar },
-        ]"
-      >
+      <nav v-if="isPhone && !statusStore.showFullPlayer" ref="navRef" class="mobile-bottom-nav">
+        <div class="mobile-bottom-nav__indicator" :style="indicatorStyle" />
         <button
-          v-for="item in phoneNavItems"
+          v-for="(item, idx) in phoneNavItems"
           :key="item.key"
+          :ref="(el) => setItemRef(el, idx)"
           :class="['mobile-bottom-nav__item', { active: activePhoneNav === item.key }]"
           type="button"
           @click="navigatePhoneNav(item.routeName)"
@@ -189,17 +185,47 @@ const activePhoneNav = computed(() => {
   return "home";
 });
 
+// 底栏滑动指示器：跟随激活的 nav item，动画平滑到位
+const navRef = ref<HTMLElement | null>(null);
+const itemRefs = ref<(HTMLElement | null)[]>([]);
+const indicatorStyle = ref<Record<string, string>>({});
+const setItemRef = (el: unknown, idx: number) => {
+  itemRefs.value[idx] = el instanceof HTMLElement ? el : null;
+};
+const updateIndicator = () => {
+  const idx = phoneNavItems.findIndex((it) => it.key === activePhoneNav.value);
+  const el = itemRefs.value[idx];
+  if (!el) {
+    indicatorStyle.value = { opacity: "0" };
+    return;
+  }
+  indicatorStyle.value = {
+    transform: `translate3d(${el.offsetLeft}px, ${el.offsetTop}px, 0)`,
+    width: `${el.offsetWidth}px`,
+    height: `${el.offsetHeight}px`,
+    opacity: "1",
+  };
+};
+watch(activePhoneNav, () => nextTick(updateIndicator));
+watch(
+  () => isPhone.value && !statusStore.showFullPlayer,
+  (visible) => {
+    if (visible) nextTick(updateIndicator);
+  },
+);
+
 const contentRef = ref<HTMLElement | null>(null);
 const { height: contentHeight } = useElementSize(contentRef);
 
 // 手机端"回到顶部"按钮的底部偏移，避开底部导航与播放条
 const phoneBackTopBottom = computed(() => {
-  const navHeight = 60; // mobile-bottom-nav 高度（含 padding）
-  const playerHeight = 80; // 播放条高度
+  const navHeight = 56; // mobile-bottom-nav 高度（含 padding 不含 safe-area）
+  const playerHeight = 64; // 浮岛播放条高度
+  const playerGap = 8; // 播放条与底栏间距
   const hasPlayer = musicStore.isHasPlayer && statusStore.showPlayBar;
-  // 基础偏移：导航栏之上 + 间距
+  // 基础偏移：底栏之上 + 间距
   const base = navHeight + 16;
-  return hasPlayer ? base + playerHeight : base;
+  return hasPlayer ? base + playerHeight + playerGap : base;
 });
 
 const loadBackgroundImage = async () => {
@@ -241,6 +267,9 @@ const handleOrientationChange = () => {
 onMounted(() => {
   loadBackgroundImage();
   window.addEventListener("orientationchange", handleOrientationChange);
+  window.addEventListener("resize", updateIndicator);
+  // 首次挂载也尝试一次（nav 可能尚未渲染，wait nextTick 更稳）
+  nextTick(updateIndicator);
   // matchMedia 在部分设备上比 orientationchange 事件更可靠
   const orientationMql = window.matchMedia("(orientation: portrait)");
   orientationMql.addEventListener?.("change", handleOrientationChange);
@@ -255,6 +284,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener("orientationchange", handleOrientationChange);
+  window.removeEventListener("resize", updateIndicator);
 });
 </script>
 
@@ -263,7 +293,10 @@ onBeforeUnmount(() => {
   --safe-area-top: max(env(safe-area-inset-top), 0px);
   --safe-area-bottom: max(env(safe-area-inset-bottom), 0px);
   --app-header-height: calc(72px + var(--safe-area-top));
-  --phone-nav-height: 52px;
+  --phone-nav-height: 56px;
+  --phone-nav-total-height: calc(var(--phone-nav-height) + var(--safe-area-bottom));
+  --phone-player-height: 64px;
+  --phone-player-gap: 8px;
   --phone-content-gap: 12px;
   width: 100%;
   height: 100%;
@@ -276,8 +309,8 @@ onBeforeUnmount(() => {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   z-index: -1;
   pointer-events: none;
   overflow: hidden;
@@ -360,8 +393,8 @@ onBeforeUnmount(() => {
 #main-phone-layout {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 100%;
   background: linear-gradient(180deg, rgba(var(--background), 0.94), rgba(var(--background), 0.9));
 }
 
@@ -369,58 +402,73 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0 16px calc(var(--phone-nav-height) + var(--safe-area-bottom) + 8px);
+  padding: 0 14px calc(var(--phone-nav-total-height) + 8px);
   box-sizing: border-box;
 }
 
 #main.show-player {
   #main-phone-content {
-    padding-bottom: calc(80px + var(--phone-nav-height) + var(--safe-area-bottom) + 8px);
+    /* 播放栏现在浮于底栏之上：底栏 + 间距 + 播放栏 + 一点冗余 */
+    padding-bottom: calc(
+      var(--phone-nav-total-height) + var(--phone-player-gap) + var(--phone-player-height) + 12px
+    );
   }
 }
 
 .mobile-bottom-nav {
   position: fixed;
-  left: 10px;
-  right: 10px;
-  bottom: calc(8px + var(--safe-area-bottom));
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 9;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
-  padding: 4px;
-  border-radius: 16px;
-  backdrop-filter: blur(16px);
-  background-color: rgba(var(--background), 0.8);
-  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.1);
-  transition:
-    transform 0.3s var(--n-bezier),
-    bottom 0.3s var(--n-bezier),
-    opacity 0.3s var(--n-bezier);
+  padding: 6px 8px calc(6px + var(--safe-area-bottom));
+  background-color: var(--surface-container-hex);
+  box-shadow: 0 -1px 8px rgba(0, 0, 0, 0.06);
+  transition: opacity 0.3s var(--n-bezier);
+
+  &__indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    border-radius: 10px;
+    background: rgba(var(--primary), 0.12);
+    transition:
+      transform 0.3s var(--n-bezier),
+      width 0.3s var(--n-bezier),
+      height 0.3s var(--n-bezier),
+      opacity 0.2s var(--n-bezier);
+    pointer-events: none;
+    z-index: 0;
+    will-change: transform, width;
+  }
 
   &__item {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 2px;
-    min-height: 34px;
+    min-height: 38px;
     padding: 2px 0;
     border: 0;
     border-radius: 10px;
     background: transparent;
     color: var(--n-text-color-2);
     transition:
-      background-color 0.3s var(--n-bezier),
       color 0.3s var(--n-bezier),
-      transform 0.3s var(--n-bezier);
+      transform 0.15s var(--n-bezier);
 
     .n-icon {
-      font-size: 15px;
+      font-size: 17px;
     }
 
     span {
-      font-size: 8px;
+      font-size: 10px;
       line-height: 1;
       text-align: center;
       word-break: keep-all;
@@ -428,43 +476,22 @@ onBeforeUnmount(() => {
 
     &.active {
       color: var(--primary-hex);
-      background: rgba(var(--primary), 0.12);
     }
 
     &:active {
-      transform: scale(0.95);
+      transform: scale(0.94);
     }
   }
 
-  @media (max-width: 512px) {
-    left: 8px;
-    right: 8px;
-    bottom: calc(8px + var(--safe-area-bottom));
-    padding: 5px;
-    gap: 3px;
-    border-radius: 16px;
-
+  @media (max-width: 360px) {
     &__item {
-      min-height: 38px;
-      gap: 2px;
-      border-radius: 11px;
-
-      span {
-        font-size: 8px;
-      }
-
       .n-icon {
-        font-size: 14px;
+        font-size: 16px;
+      }
+      span {
+        font-size: 9px;
       }
     }
-  }
-}
-
-.mobile-bottom-nav.is-raised {
-  bottom: calc(78px + var(--safe-area-bottom));
-
-  @media (max-width: 512px) {
-    bottom: calc(72px + var(--safe-area-bottom));
   }
 }
 </style>

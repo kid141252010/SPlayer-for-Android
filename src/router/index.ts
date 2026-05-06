@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory, Router } from "vue-router";
 import { openUserLogin } from "@/utils/modal";
-import { isElectron } from "@/utils/env";
+import { isElectron, isCapacitorAndroid } from "@/utils/env";
 import { isLogin } from "@/utils/auth";
 import routes from "./routes";
 
@@ -42,7 +42,8 @@ router.beforeEach((to, from, next) => {
     return;
   }
   // 需要客户端
-  else if (to.meta.needApp && !isElectron) {
+  // Electron 与 Capacitor Android 均视为客户端
+  else if (to.meta.needApp && !isElectron && !isCapacitorAndroid) {
     window.$message?.warning("该功能为客户端独占功能");
     next("/403");
   }

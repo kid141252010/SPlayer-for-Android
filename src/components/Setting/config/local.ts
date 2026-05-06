@@ -3,11 +3,12 @@ import { useCacheManager } from "@/core/resource/CacheManager";
 import { formatFileSize } from "@/utils/helper";
 import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
 import { SettingConfig } from "@/types/settings";
-import { isElectron } from "@/utils/env";
+import { isCapacitorAndroid } from "@/utils/env";
 import { openLocalMusicDirectoryModal } from "@/utils/modal";
 import { pick } from "lodash-es";
 import LocalLyricDirectories from "../components/LocalLyricDirectories.vue";
 import CacheSizeLimit from "../components/CacheSizeLimit.vue";
+import { AndroidDownload } from "@/plugins/androidDownload";
 
 export const useLocalSettings = (): SettingConfig => {
   const statusStore = useStatusStore();
@@ -185,6 +186,19 @@ export const useLocalSettings = (): SettingConfig => {
 
   // 更改下载目录
   const chooseDownloadPath = async () => {
+    if (isCapacitorAndroid) {
+      try {
+        const result = await AndroidDownload.pickDownloadDirectory();
+        if (result.cancelled || !result.uri) return;
+        settingStore.androidDownloadDirectoryUri = result.uri;
+        settingStore.downloadPath = result.name || "Android 下载目录";
+        window.$message.success("已选择下载目录");
+      } catch (error) {
+        console.error("选择下载目录失败:", error);
+        window.$message.error("选择下载目录失败");
+      }
+      return;
+    }
     const path = await window.electron.ipcRenderer.invoke("choose-path");
     if (path) settingStore.downloadPath = path;
   };
@@ -241,7 +255,6 @@ export const useLocalSettings = (): SettingConfig => {
             label: "本地歌词覆盖在线歌词",
             type: "custom",
             noWrapper: true,
-            show: isElectron,
             component: markRaw(LocalLyricDirectories),
           },
         ],
@@ -307,16 +320,29 @@ export const useLocalSettings = (): SettingConfig => {
             key: "downloadPath",
             label: "默认下载目录",
             type: "button",
-            description: computed(() => settingStore.downloadPath || "若不设置则无法进行下载"),
-            buttonLabel: "更改",
+            description: computed(() =>
+              isCapacitorAndroid
+                ? settingStore.androidDownloadDirectoryUri
+                  ? "已选择下载目录"
+                  : "请选择下载目录（首次使用需授权）"
+                : settingStore.downloadPath || "若不设置则无法进行下载",
+            ),
+            buttonLabel: isCapacitorAndroid ? "选择目录" : "更改",
             action: chooseDownloadPath,
             extraButton: {
               label: "清除选择",
               type: "primary",
               secondary: true,
               strong: true,
-              action: () => (settingStore.downloadPath = ""),
-              show: computed(() => !!settingStore.downloadPath),
+              action: () => {
+                settingStore.downloadPath = "";
+                if (isCapacitorAndroid) settingStore.androidDownloadDirectoryUri = "";
+              },
+              show: computed(() =>
+                isCapacitorAndroid
+                  ? !!settingStore.androidDownloadDirectoryUri
+                  : !!settingStore.downloadPath,
+              ),
             },
           },
           {

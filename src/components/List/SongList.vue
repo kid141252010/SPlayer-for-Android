@@ -63,9 +63,7 @@
             </n-popover>
             <n-text v-else class="title">标题</n-text>
             <n-text
-              v-if="
-                type !== 'radio' && !hiddenAlbum && !isPhone && settingStore.showSongAlbum
-              "
+              v-if="type !== 'radio' && !hiddenAlbum && !isPhone && settingStore.showSongAlbum"
               class="album"
             >
               专辑
@@ -75,9 +73,7 @@
             </n-text>
             <n-text v-if="type === 'radio' && !isPhone" class="meta date">更新日期</n-text>
             <n-text v-if="type === 'radio' && !isPhone" class="meta">播放量</n-text>
-            <n-text v-if="!isPhone && settingStore.showSongDuration" class="meta">
-              时长
-            </n-text>
+            <n-text v-if="!isPhone && settingStore.showSongDuration" class="meta"> 时长 </n-text>
             <n-text v-if="data?.[0].size && !hiddenSize && !isPhone" class="meta size">
               大小
             </n-text>

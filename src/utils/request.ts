@@ -10,11 +10,7 @@ import { useSettingStore } from "@/stores";
 import { getCookie } from "./cookie";
 import { isLogin } from "./auth";
 import { isCapacitorAndroid, isCapacitorNative, isDev } from "./env";
-import {
-  EMBEDDED_API_BASE_URL,
-  restartEmbeddedApi,
-  waitForEmbeddedApiReady,
-} from "./embeddedApi";
+import { EMBEDDED_API_BASE_URL, restartEmbeddedApi, waitForEmbeddedApiReady } from "./embeddedApi";
 
 declare module "axios" {
   interface InternalAxiosRequestConfig {

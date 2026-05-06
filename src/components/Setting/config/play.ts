@@ -11,6 +11,7 @@ import { NTooltip, SelectOption } from "naive-ui";
 import { uniqBy } from "lodash-es";
 
 import { computed, ref, h, watch } from "vue";
+import { destroyAudioManager, useAudioManager } from "@/core/player/AudioManager";
 
 export const usePlaySettings = (): SettingConfig => {
   const settingStore = useSettingStore();
@@ -384,8 +385,7 @@ export const usePlaySettings = (): SettingConfig => {
             label: "通知栏音乐控制器",
             type: "switch",
             show: isCapacitorAndroid,
-            description:
-              "使用 Android 原生后台播放控制，并在通知栏和系统媒体面板显示控制器。",
+            description: "使用 Android 原生后台播放控制，并在通知栏和系统媒体面板显示控制器。",
             value: computed({
               get: () => settingStore.androidMediaControllerEnabled,
               set: (v) => {
@@ -398,8 +398,7 @@ export const usePlaySettings = (): SettingConfig => {
             label: "显示桌面歌词按钮",
             type: "switch",
             show: isCapacitorAndroid,
-            description:
-              "在通知栏显示桌面歌词开关按钮",
+            description: "在通知栏显示桌面歌词开关按钮",
             value: computed({
               get: () => settingStore.androidMediaControllerDesktopLyricEnabled,
               set: (v) => {
@@ -415,13 +414,17 @@ export const usePlaySettings = (): SettingConfig => {
             type: "switch",
             show: isCapacitorAndroid,
             description:
-              "关闭时，开始播放会请求独占音频焦点并暂停其他正在播放的应用；开启时与其他应用混音共存。",
+              "关闭时，开始播放会请求独占音频焦点并暂停其他正在播放的应用；开启时与其他应用混音共存（切换后需重启播放）。",
             value: computed({
               get: () => settingStore.androidAllowMixWithOthers,
               set: (v) => {
                 settingStore.androidAllowMixWithOthers = v;
                 if (isCapacitorAndroid) {
                   void AndroidNativePlayback.setAllowMixWithOthers({ allow: v });
+                  player.pause();
+                  destroyAudioManager();
+                  useAudioManager();
+                  player.rebindAudioEvents();
                 }
               },
             }),
@@ -453,6 +456,9 @@ export const usePlaySettings = (): SettingConfig => {
                     StatusBar.hide();
                   }
                 });
+                if (isCapacitorAndroid) {
+                  void AndroidNativePlayback.setShowStatusBar({ show: v });
+                }
               },
             }),
           },
@@ -543,7 +549,9 @@ export const usePlaySettings = (): SettingConfig => {
                 }
               },
             }),
-            disabled: computed(() => isCapacitorAndroid || settingStore.playbackEngine !== "web-audio"),
+            disabled: computed(
+              () => isCapacitorAndroid || settingStore.playbackEngine !== "web-audio",
+            ),
             children: [
               {
                 key: "automixMaxAnalyzeTime",
@@ -682,7 +690,9 @@ export const usePlaySettings = (): SettingConfig => {
             description:
               "手动补偿音频与歌词进度延迟。<br>正值歌词变快，负值歌词进度变慢。<br>适用于移动端等自动延迟检测不准的设备。",
             tags: [{ text: "Beta", type: "warning" }],
-            show: computed(() => !isCapacitorAndroid && settingStore.audioLatencyHint === "playback"),
+            show: computed(
+              () => !isCapacitorAndroid && settingStore.audioLatencyHint === "playback",
+            ),
             min: -1000,
             max: 1000,
             step: 10,
@@ -787,4 +797,3 @@ export const usePlaySettings = (): SettingConfig => {
     ],
   };
 };
-

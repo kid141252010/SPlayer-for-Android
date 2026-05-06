@@ -434,7 +434,9 @@ const handleTabChange = (value: "songs" | "comments") => {
       display: flex;
       flex-direction: column;
       flex: 1;
+      min-width: 0;
       padding-right: 60px;
+      overflow: hidden;
       :deep(.n-skeleton) {
         margin-bottom: 12px;
         border-radius: 8px;
@@ -448,6 +450,7 @@ const handleTabChange = (value: "songs" | "comments") => {
         font-size: 30px;
         font-weight: bold;
         margin-bottom: 12px;
+        flex-shrink: 0;
         transition:
           font-size 0.3s var(--n-bezier),
           color 0.3s var(--n-bezier);
@@ -457,10 +460,9 @@ const handleTabChange = (value: "songs" | "comments") => {
         }
       }
       .collapse {
-        position: absolute;
-        left: 0;
-        top: 60px;
         margin-bottom: 12px;
+        min-height: 0;
+        overflow: hidden;
       }
       .meta {
         .item {
@@ -505,10 +507,10 @@ const handleTabChange = (value: "songs" | "comments") => {
         }
       }
       .menu {
-        position: absolute;
-        left: 0;
-        bottom: 0;
         width: 100%;
+        margin-top: auto;
+        flex-shrink: 0;
+        row-gap: 8px;
         :deep(.n-button) {
           height: 40px;
           transition: all 0.3s var(--n-bezier);
@@ -553,24 +555,22 @@ const handleTabChange = (value: "songs" | "comments") => {
       }
     }
     @media (max-width: 768px) {
-      height: 180px;
+      height: 168px;
+      padding: 10px 0 16px 0;
       .cover {
-        margin-right: 12px;
+        margin-right: 10px;
       }
       .data {
-        padding-right: 20px;
+        padding-right: 16px;
         .name {
-          font-size: 22px;
-          margin-bottom: 8px;
-        }
-        .collapse {
-          top: 42px;
+          font-size: 20px;
+          margin-bottom: 6px;
         }
         .menu {
           :deep(.n-button) {
-            height: 34px;
+            height: 32px;
             --n-font-size: 13px;
-            --n-padding: 0 14px;
+            --n-padding: 0 12px;
             --n-icon-size: 16px;
           }
         }

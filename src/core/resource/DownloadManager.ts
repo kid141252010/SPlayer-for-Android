@@ -1,6 +1,6 @@
 import type { SongType, SongLevelType } from "@/types/main";
 import { useDataStore, useSettingStore } from "@/stores";
-import { isElectron } from "@/utils/env";
+import { isCapacitorAndroid, isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
 import { songDownloadUrl, songLyric, songUrl, unlockSongUrl, songLyricTTML } from "@/api/song";
@@ -9,6 +9,7 @@ import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
 import { LyricProcessor, type LyricProcessorOptions, type LyricResult } from "./LyricProcessor";
 import { albumDetail } from "@/api/album";
+import { AndroidDownload } from "@/plugins/androidDownload";
 
 const albumArtistCache = new Map<number, string[] | Promise<string[]>>();
 const MAX_ALBUM_ARTIST_CACHE_SIZE = 100;
@@ -202,7 +203,6 @@ class SongDownloadStrategy implements DownloadStrategy {
    */
   async postProcess(downloadedFilePath: string): Promise<void> {
     console.log(`Post-processing file: ${downloadedFilePath}`);
-    // 使用存储的文件名和路径
     const fileName = this.getFileName();
     const targetPath = this.getDownloadPath();
     const { downloadMakeYrc, downloadSaveAsAss } = this.settingStore;
@@ -221,14 +221,23 @@ class SongDownloadStrategy implements DownloadStrategy {
         this.lyricResult,
         options,
       );
-      if (result && window.electron?.ipcRenderer) {
-        await window.electron.ipcRenderer.invoke("save-file", {
-          targetPath,
-          fileName,
-          ext: result.ext,
-          content: result.content,
-          encoding: result.encoding,
-        });
+      if (result) {
+        if (isElectron && window.electron?.ipcRenderer) {
+          await window.electron.ipcRenderer.invoke("save-file", {
+            targetPath,
+            fileName,
+            ext: result.ext,
+            content: result.content,
+            encoding: result.encoding,
+          });
+        } else if (isCapacitorAndroid && this.settingStore.androidDownloadDirectoryUri) {
+          await AndroidDownload.writeTextFile({
+            fileName: `${fileName}.${result.ext}`,
+            content: result.content,
+            directoryUri: this.settingStore.androidDownloadDirectoryUri,
+            subPath: targetPath,
+          });
+        }
       }
     }
 
@@ -245,14 +254,23 @@ class SongDownloadStrategy implements DownloadStrategy {
         options,
       );
 
-      if (result && window.electron?.ipcRenderer) {
-        await window.electron.ipcRenderer.invoke("save-file", {
-          targetPath,
-          fileName,
-          ext: "ass",
-          content: result.content,
-          encoding: result.encoding,
-        });
+      if (result) {
+        if (isElectron && window.electron?.ipcRenderer) {
+          await window.electron.ipcRenderer.invoke("save-file", {
+            targetPath,
+            fileName,
+            ext: "ass",
+            content: result.content,
+            encoding: result.encoding,
+          });
+        } else if (isCapacitorAndroid && this.settingStore.androidDownloadDirectoryUri) {
+          await AndroidDownload.writeTextFile({
+            fileName: `${fileName}.ass`,
+            content: result.content,
+            directoryUri: this.settingStore.androidDownloadDirectoryUri,
+            subPath: targetPath,
+          });
+        }
       }
     }
   }
@@ -389,7 +407,7 @@ class DownloadManager {
   public init() {
     if (this.initialized) return;
     this.initialized = true;
-    if (!isElectron) return;
+    if (!isElectron && !isCapacitorAndroid) return;
 
     const dataStore = useDataStore();
 
@@ -437,6 +455,18 @@ class DownloadManager {
    */
   public async getDownloadedSongs(): Promise<Record<string, unknown>[]> {
     const settingStore = useSettingStore();
+    // Android: 通过 SAF 列出已下载目录
+    if (isCapacitorAndroid) {
+      const directoryUri = settingStore.androidDownloadDirectoryUri;
+      if (!directoryUri) return [];
+      try {
+        const result = await AndroidDownload.listDownloadedSongs({ directoryUri });
+        return (result?.songs || []) as unknown as Record<string, unknown>[];
+      } catch (error) {
+        console.error("Failed to list Android downloaded songs:", error);
+        return [];
+      }
+    }
     if (!isElectron) return [];
     const downloadPath = settingStore.downloadPath;
     if (!downloadPath) return [];
@@ -573,6 +603,33 @@ class DownloadManager {
           } else {
             throw new Error(downloadResult.message || "下载失败");
           }
+        }
+      } else if (isCapacitorAndroid) {
+        // Android SAF 下载
+        if (!strategy.downloadUrl) throw new Error("Download URL missing");
+        const settingStore = useSettingStore();
+        const directoryUri = settingStore.androidDownloadDirectoryUri;
+        if (!directoryUri) {
+          throw new Error("未配置下载目录，请在设置中选择下载目录");
+        }
+
+        const fileName = `${config.fileName}.${config.fileType}`;
+        const downloadResult = await AndroidDownload.downloadFile({
+          url: strategy.downloadUrl,
+          fileName,
+          directoryUri,
+          subPath:
+            config.path !== settingStore.downloadPath
+              ? config.path.replace(settingStore.downloadPath, "").replace(/^\/+/, "")
+              : "",
+        });
+
+        if (downloadResult.status === "success" || downloadResult.status === "skipped") {
+          await strategy.postProcess(downloadResult.path || config.path);
+          dataStore.removeDownloadingSong(strategy.id);
+          window.$message.success(`${strategy.name} 下载完成`);
+        } else {
+          throw new Error("下载失败");
         }
       } else {
         // 浏览器端兜底处理

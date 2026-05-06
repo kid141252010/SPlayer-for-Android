@@ -33,7 +33,9 @@ const router = useRouter();
 const settingStore = useSettingStore();
 const { isPhone } = useDevice();
 
-const discoverType = ref<string>((router.currentRoute.value?.name as string) || "discover-playlists");
+const discoverType = ref<string>(
+  (router.currentRoute.value?.name as string) || "discover-playlists",
+);
 </script>
 
 <style lang="scss" scoped>

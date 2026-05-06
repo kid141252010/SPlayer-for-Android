@@ -18,10 +18,10 @@ const RES = resolve(REPO_ROOT, "android/app/src/main/res");
 const LIGHT_BG = "#dcefdf";
 
 const DENSITIES = {
-  mdpi:    { launcher:  48, foreground: 108 },
-  hdpi:    { launcher:  72, foreground: 162 },
-  xhdpi:   { launcher:  96, foreground: 216 },
-  xxhdpi:  { launcher: 144, foreground: 324 },
+  mdpi: { launcher: 48, foreground: 108 },
+  hdpi: { launcher: 72, foreground: 162 },
+  xhdpi: { launcher: 96, foreground: 216 },
+  xxhdpi: { launcher: 144, foreground: 324 },
   xxxhdpi: { launcher: 192, foreground: 432 },
 };
 

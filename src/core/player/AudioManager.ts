@@ -1,6 +1,7 @@
 import { useSettingStore } from "@/stores";
-import { checkIsolationSupport, isElectron } from "@/utils/env";
+import { checkIsolationSupport, isCapacitorAndroid, isElectron } from "@/utils/env";
 import { TypedEventTarget } from "@/utils/TypedEventTarget";
+import { AndroidNativeAudioPlayer } from "../audio-player/AndroidNativeAudioPlayer";
 import { AudioElementPlayer } from "../audio-player/AudioElementPlayer";
 import { AUDIO_EVENTS, type AudioEventMap } from "../audio-player/BaseAudioPlayer";
 import { FFmpegAudioPlayer } from "../audio-player/ffmpeg-engine/FFmpegAudioPlayer";
@@ -43,8 +44,8 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     super();
 
     // 根据设置选择引擎
-    // Android：暂时回退到 HTMLAudioElement（AudioElementPlayer），
-    //   ExoPlayer 原生引擎的 seek 行为一直调不好，先保证可用。
+    // Android：当允许与其他应用同时播放时使用 ExoPlayer（handleAudioFocus=false），
+    //   否则使用 HTMLAudioElement（默认会请求 AUDIOFOCUS_GAIN 抢占其他应用）。
     if (isElectron && playbackEngine === "mpv") {
       const mpvPlayer = useMpvPlayer();
       mpvPlayer.init();
@@ -53,6 +54,9 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     } else if (audioEngine === "ffmpeg" && checkIsolationSupport()) {
       this.engine = new FFmpegAudioPlayer();
       this.engineType = "ffmpeg";
+    } else if (isCapacitorAndroid && useSettingStore().androidAllowMixWithOthers) {
+      this.engine = new AndroidNativeAudioPlayer();
+      this.engineType = "android-native";
     } else {
       if (audioEngine === "ffmpeg" && !checkIsolationSupport()) {
         console.warn("[AudioManager] 环境未隔离，从 FFmpeg 回退到 Web Audio");
@@ -528,4 +532,16 @@ export const useAudioManager = (): AudioManager => {
     console.log(`[AudioManager] 创建新实例, engine: ${win[AUDIO_MANAGER_KEY].engineType}`);
   }
   return win[AUDIO_MANAGER_KEY];
+};
+
+/**
+ * 销毁当前 AudioManager 单例，下次 useAudioManager() 时自动重建。
+ * 用于 Android 上切换 allowMixWithOthers 需要更换引擎时。
+ */
+export const destroyAudioManager = (): void => {
+  const win = window as Window & { [AUDIO_MANAGER_KEY]?: AudioManager };
+  if (win[AUDIO_MANAGER_KEY]) {
+    win[AUDIO_MANAGER_KEY].destroy();
+    delete win[AUDIO_MANAGER_KEY];
+  }
 };

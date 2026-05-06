@@ -1,9 +1,11 @@
 package top.imsyy.splayer.android.playback;
 
+import android.content.SharedPreferences;
 import android.Manifest;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import androidx.annotation.Nullable;
 import com.getcapacitor.JSObject;
@@ -35,14 +37,17 @@ public class AndroidNativePlaybackPlugin extends Plugin {
   @PluginMethod
   public void load(PluginCall call) {
     String url = call.getString("url", "");
-    long positionMs = call.getLong("positionMs", 0L);
+    // Capacitor 从 JS 传 number 时底层是 Double，getLong 取不到要用 getDouble 转 long
+    long positionMs = (long) (double) call.getDouble("positionMs", 0.0);
     boolean autoPlay = call.getBoolean("autoPlay", false);
+    android.util.Log.d("CapacitorBridge", "load: positionMs=" + positionMs + " autoPlay=" + autoPlay);
     resolveOnMainThread(
         call, () -> PlaybackManager.getInstance(getContext()).load(url, positionMs, autoPlay));
   }
 
   @PluginMethod
   public void play(PluginCall call) {
+    android.util.Log.d("CapacitorBridge", "play called");
     resolveOnMainThread(call, () -> PlaybackManager.getInstance(getContext()).play());
   }
 
@@ -58,7 +63,9 @@ public class AndroidNativePlaybackPlugin extends Plugin {
 
   @PluginMethod
   public void seek(PluginCall call) {
-    long positionMs = call.getLong("positionMs", 0L);
+    // Capacitor 从 JS 传 number 时底层是 Double，getLong 会取不到默认返回 0L 导致 seek-to-zero
+    long positionMs = (long) (double) call.getDouble("positionMs", 0.0);
+    android.util.Log.d("CapacitorBridge", "seek: positionMs=" + positionMs);
     resolveOnMainThread(call, () -> PlaybackManager.getInstance(getContext()).seek(positionMs));
   }
 
@@ -92,7 +99,8 @@ public class AndroidNativePlaybackPlugin extends Plugin {
     metadata.artist = call.getString("artist", "");
     metadata.album = call.getString("album", "");
     metadata.coverUrl = call.getString("coverUrl", "");
-    metadata.durationMs = call.getLong("durationMs", 0L);
+    // 同 seek/load：JS number → Double，用 getDouble 避免 0
+    metadata.durationMs = (long) (double) call.getDouble("durationMs", 0.0);
     metadata.canLike = call.getBoolean("canLike", false);
     runOnMainThread(
         call,
@@ -146,6 +154,21 @@ public class AndroidNativePlaybackPlugin extends Plugin {
   }
 
   @PluginMethod
+  public void setShowStatusBar(PluginCall call) {
+    boolean show = call.getBoolean("show", false);
+    runOnMainThread(
+        call,
+        () -> {
+          SharedPreferences prefs = android.preference.PreferenceManager.getDefaultSharedPreferences(getContext());
+          prefs.edit().putBoolean("androidShowStatusBar", show).apply();
+          if (getActivity() instanceof top.imsyy.splayer.android.MainActivity) {
+            ((top.imsyy.splayer.android.MainActivity) getActivity()).applyImmersiveMode();
+          }
+          call.resolve();
+        });
+  }
+
+  @PluginMethod
   public void syncApiContext(PluginCall call) {
     runOnMainThread(
         call,
@@ -164,8 +187,9 @@ public class AndroidNativePlaybackPlugin extends Plugin {
   @PluginMethod
   public void syncRemoteState(PluginCall call) {
     boolean playing = call.getBoolean("playing", false);
-    long positionMs = call.getLong("positionMs", 0L);
-    long durationMs = call.getLong("durationMs", 0L);
+    // 同 seek/load：JS number → Double，用 getDouble 转 long
+    long positionMs = (long) (double) call.getDouble("positionMs", 0.0);
+    long durationMs = (long) (double) call.getDouble("durationMs", 0.0);
     runOnMainThread(
         call,
         () -> {
@@ -347,7 +371,7 @@ public class AndroidNativePlaybackPlugin extends Plugin {
     metadata.artist = data.optString("artist", "");
     metadata.album = data.optString("album", "");
     metadata.coverUrl = data.optString("coverUrl", "");
-    metadata.durationMs = data.optLong("durationMs", 0L);
+    metadata.durationMs = (long) data.optDouble("durationMs", 0.0);
     metadata.canLike = data.optBoolean("canLike", false);
     metadata.liked = data.optBoolean("liked", false);
     if (includeUrl) {

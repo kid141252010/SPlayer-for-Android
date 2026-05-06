@@ -4,7 +4,9 @@
 
 export * as subsonicApi from "./subsonic";
 export * as jellyfinApi from "./jellyfin";
+export * as webdavApi from "./webdav";
 
 export { default as subsonic } from "./subsonic";
 export { default as jellyfin } from "./jellyfin";
 export { default as emby } from "./emby";
+export { default as webdav } from "./webdav";

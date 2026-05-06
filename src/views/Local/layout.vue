@@ -170,6 +170,8 @@ import { fuzzySearch, renderIcon } from "@/utils/helper";
 import { openBatchList, openCreatePlaylist, openLocalMusicDirectoryModal } from "@/utils/modal";
 import { debounce } from "lodash-es";
 import type { DropdownOption, MessageReactive } from "naive-ui";
+import { isCapacitorAndroid } from "@/utils/env";
+import { AndroidDownload } from "@/plugins/androidDownload";
 
 const router = useRouter();
 const localStore = useLocalStore();
@@ -197,7 +199,16 @@ const listVersion = ref<number>(0);
 const folderOptions = computed(() => {
   const options: { label: string; value: string }[] = [{ label: "全部文件夹", value: "all" }];
 
-  // 基于配置的目录列表生成选项
+  if (isCapacitorAndroid) {
+    // Android: 基于 SAF 目录列表
+    settingStore.androidLocalMusicDirectories.forEach((item) => {
+      if (!item.uri) return;
+      options.push({ label: item.name || "未命名目录", value: item.uri });
+    });
+    return options;
+  }
+
+  // 桌面端：基于本地路径
   settingStore.localFilesPath.forEach((folderPath) => {
     if (!folderPath) return;
     const isWindows = folderPath.includes("\\");
@@ -217,19 +228,28 @@ const filteredSearchResult = ref<SongType[]>([]);
 const getFilteredData = (): SongType[] => {
   let data = localStore.localSongs;
   if (selectedFolder.value !== "all" && settingStore.localFolderDisplayMode === "dropdown") {
-    // 标准化选中的文件夹路径（统一使用反斜杠）
-    const folderPath = selectedFolder.value.replace(/\//g, "\\");
-    data = data.filter((song) => {
-      if (!song.path) return false;
-      // 标准化歌曲路径
-      const songPath = song.path.replace(/\//g, "\\");
-      // 检查歌曲路径是否在选中的目录下
-      if (songPath === folderPath) return true;
-      if (songPath.startsWith(folderPath + "\\")) {
-        return true;
-      }
-      return false;
-    });
+    if (isCapacitorAndroid) {
+      // Android: SAF URI 前缀匹配
+      const folderUri = selectedFolder.value;
+      data = data.filter((song) => {
+        if (!song.path) return false;
+        return song.path.startsWith(folderUri);
+      });
+    } else {
+      // 标准化选中的文件夹路径（统一使用反斜杠）
+      const folderPath = selectedFolder.value.replace(/\//g, "\\");
+      data = data.filter((song) => {
+        if (!song.path) return false;
+        // 标准化歌曲路径
+        const songPath = song.path.replace(/\//g, "\\");
+        // 检查歌曲路径是否在选中的目录下
+        if (songPath === folderPath) return true;
+        if (songPath.startsWith(folderPath + "\\")) {
+          return true;
+        }
+        return false;
+      });
+    }
   }
   return data;
 };
@@ -259,7 +279,10 @@ const handlePlay = () => {
 };
 
 // 是否存在配置目录与歌曲
-const hasConfig = computed<boolean>(() => settingStore.localFilesPath.length > 0);
+const hasConfig = computed<boolean>(() => {
+  if (isCapacitorAndroid) return settingStore.androidLocalMusicDirectories.length > 0;
+  return settingStore.localFilesPath.length > 0;
+});
 const hasSong = computed<boolean>(() => localStore.localSongs.length > 0);
 const tabsDisabled = computed<boolean>(() => !hasConfig.value || !hasSong.value);
 
@@ -300,6 +323,9 @@ const showEmptyState = computed<boolean>(() => isLocalSongsRoute.value && !hasSo
 
 // 获取音乐文件夹（仅使用配置的本地文件夹）
 const getMusicFolder = async (): Promise<string[]> => {
+  if (isCapacitorAndroid) {
+    return settingStore.androidLocalMusicDirectories.map((i) => i.uri).filter(Boolean);
+  }
   const paths = [...settingStore.localFilesPath];
   // 过滤空路径
   return paths.filter((p) => p && p.trim() !== "");
@@ -385,6 +411,44 @@ const getAllLocalMusic = debounce(
     loading.value = true;
     // 记录初始歌曲数量，用于计算新增数量
     const initialSongCount = localStore.localSongs.length;
+
+    // Android 分支：调用 Capacitor 插件扫描 SAF 目录
+    if (isCapacitorAndroid) {
+      try {
+        const directories = settingStore.androidLocalMusicDirectories
+          .filter((i) => i.uri)
+          .map((i) => ({ uri: i.uri, name: i.name }));
+        const result = await AndroidDownload.scanLocalMusic({ directories });
+        const tracks = (result?.songs || []) as unknown as Record<string, unknown>[];
+        const finalSongs = formatSongsList(tracks);
+        localStore.updateLocalSong(finalSongs);
+        if (searchValue.value) {
+          filteredSearchResult.value = fuzzySearch(searchValue.value, finalSongs);
+        }
+        const addedCount = finalSongs.length - initialSongCount;
+        if (showTip) {
+          if (addedCount > 0) {
+            window.$message.success(`新增 ${addedCount} 首歌曲`);
+          } else {
+            window.$message.success(`已发现 ${finalSongs.length} 首歌曲`);
+          }
+          if (result?.failedDirectories) {
+            window.$message.warning(`${result.failedDirectories} 个目录读取失败`);
+          }
+        } else if (addedCount > 0) {
+          window.$message.success(`新增 ${addedCount} 首歌曲`);
+        }
+      } catch (error) {
+        console.error("Android 本地音乐扫描失败:", error);
+        window.$message.error("本地音乐扫描失败，请检查目录权限");
+      } finally {
+        loading.value = false;
+        loadingMsg.value?.destroy();
+        loadingMsg.value = null;
+      }
+      return;
+    }
+
     // 累积接收到的tracks
     const receivedTracks: Record<string, unknown>[] = [];
     let isCompleted = false;
@@ -497,6 +561,14 @@ watch(
   async () => await getAllLocalMusic(),
   { deep: true },
 );
+// Android 本地目录变化
+watch(
+  () => settingStore.androidLocalMusicDirectories,
+  async () => {
+    if (isCapacitorAndroid) await getAllLocalMusic();
+  },
+  { deep: true },
+);
 
 // 选中文件夹变化时更新列表版本（触发滚动到顶部）
 watch(selectedFolder, () => {
@@ -521,6 +593,11 @@ watch(
 );
 
 onMounted(() => {
+  // Android 端不依赖 Electron IPC，直接扫描即可
+  if (isCapacitorAndroid) {
+    getAllLocalMusic();
+    return;
+  }
   // 监听本地音乐同步进度
   const progressHandler = (_event: unknown, payload: { current: number; total: number }) => {
     if (!loading.value) return;
@@ -537,6 +614,8 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  // Android 端没有需要清理的 Electron 监听器
+  if (isCapacitorAndroid) return;
   // 清理所有相关监听器
   window.electron.ipcRenderer.removeAllListeners("music-sync-progress");
   window.electron.ipcRenderer.removeAllListeners("music-sync-tracks-batch");

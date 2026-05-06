@@ -254,22 +254,27 @@ const getListData = async (id: number | string): Promise<SongType[]> => {
 .cover-list {
   width: 100%;
   padding: 20px 4px;
-  
+
+  // 手机端外层 padding 收紧
+  @media (max-width: 768px) {
+    padding: 14px 2px;
+  }
+
   .cover-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 20px;
-    
+
     // 手机版适配（768px 以下）
     @media (max-width: 768px) {
       grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
+      gap: 10px;
     }
-    
+
     // 小屏手机（512px 以下）
     @media (max-width: 512px) {
       grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+      gap: 7px;
     }
   }
   .cover-item {
@@ -281,12 +286,12 @@ const getListData = async (id: number | string): Promise<SongType[]> => {
       background-color 0.3s,
       transform 0.3s;
     cursor: pointer;
-    
+
     // 手机版适配
     @media (max-width: 768px) {
       border-radius: 12px;
     }
-    
+
     .cover {
       position: relative;
       display: flex;
@@ -300,12 +305,12 @@ const getListData = async (id: number | string): Promise<SongType[]> => {
       transition:
         border-radius 0.3s,
         box-shadow 0.3s;
-      
+
       // 手机版适配
       @media (max-width: 768px) {
         border-radius: 12px;
       }
-      
+
       :deep(img) {
         width: 100%;
         height: 100%;
@@ -426,6 +431,19 @@ const getListData = async (id: number | string): Promise<SongType[]> => {
       :deep(.n-skeleton) {
         &:first-child {
           margin-bottom: 12px;
+        }
+      }
+
+      // 手机端紧凑：减少卡片下方文字区 padding 与字号
+      @media (max-width: 768px) {
+        padding: 8px 8px 10px;
+        .name {
+          font-size: 14px;
+        }
+        .tip,
+        .meta,
+        .artists {
+          font-size: 12px;
         }
       }
     }

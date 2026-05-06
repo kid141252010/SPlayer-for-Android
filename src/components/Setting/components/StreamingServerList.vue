@@ -97,6 +97,7 @@ const getServerTypeLabel = (type: StreamingServerType): string => {
     emby: "Emby",
     subsonic: "Subsonic", // 兼容
     opensubsonic: "OpenSubsonic",
+    webdav: "WebDAV",
   };
   return labels[type] || type;
 };

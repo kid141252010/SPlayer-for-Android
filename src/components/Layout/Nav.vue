@@ -66,11 +66,7 @@
       </n-flex>
     </n-flex>
     <!-- 客户端控制 -->
-    <n-flex
-      v-if="isElectron && !isPhone && !isLandscape"
-      align="center"
-      class="client-control"
-    >
+    <n-flex v-if="isElectron && !isPhone && !isLandscape" align="center" class="client-control">
       <n-divider class="divider" vertical />
       <div class="min-button-wrapper" @click="min" title="最小化">
         <n-button :focusable="false" title="最小化" tertiary circle @click.stop="min">
@@ -306,13 +302,13 @@ onMounted(async () => {
   padding: calc(10px + var(--safe-area-top)) 1rem 10px;
   background-color: transparent;
   -webkit-app-region: drag;
-  
+
   .n-button {
     width: 40px;
     height: 40px;
     -webkit-app-region: no-drag;
   }
-  
+
   .nav-main {
     position: relative;
     flex: 1;
@@ -357,16 +353,16 @@ onMounted(async () => {
       right: 100px;
     }
   }
-  
+
   // 手机版适配
   @media (max-width: 768px) {
     padding: calc(8px + var(--safe-area-top)) 12px 8px;
-    
+
     .page-control {
       .n-button {
         width: 36px;
         height: 36px;
-        
+
         .n-icon {
           font-size: 22px;
         }

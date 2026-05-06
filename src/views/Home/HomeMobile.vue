@@ -31,7 +31,7 @@
     <!-- 推荐歌单 -->
     <section class="section">
       <div class="section-header">
-        <h3 class="section-title">{{ isLogin() ? '专属歌单' : '推荐歌单' }}</h3>
+        <h3 class="section-title">{{ isLogin() ? "专属歌单" : "推荐歌单" }}</h3>
         <span class="section-more" @click="router.push({ name: 'discover-playlists' })">
           更多 <SvgIcon name="Right" :size="16" />
         </span>
@@ -173,9 +173,9 @@ const videoRec = ref<any[]>([]);
 // 格式化播放次数
 const formatPlayCount = (count: number) => {
   if (count > 100000000) {
-    return (count / 100000000).toFixed(1) + '亿';
+    return (count / 100000000).toFixed(1) + "亿";
   } else if (count > 10000) {
-    return (count / 10000).toFixed(1) + '万';
+    return (count / 10000).toFixed(1) + "万";
   }
   return count.toString();
 };
@@ -213,7 +213,7 @@ const loadAllData = async () => {
       id: album.id,
       name: album.name,
       cover: album.picUrl,
-      artist: album.artist?.name || '未知艺术家',
+      artist: album.artist?.name || "未知艺术家",
     }));
 
     // 处理歌手数据
@@ -232,14 +232,14 @@ const loadAllData = async () => {
       duration: mv.duration,
     }));
 
-    console.log('数据加载成功:', {
+    console.log("数据加载成功:", {
       playlist: playlistRec.value.length,
       album: albumRec.value.length,
       artist: artistRec.value.length,
       video: videoRec.value.length,
     });
   } catch (err) {
-    console.error('加载数据失败:', err);
+    console.error("加载数据失败:", err);
     error.value = true;
   } finally {
     loading.value = false;

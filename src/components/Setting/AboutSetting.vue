@@ -33,12 +33,7 @@
               <template #header>
                 <div class="version">
                   <n-text>最新版本</n-text>
-                  <n-tag
-                    :bordered="false"
-                    size="small"
-                    type="primary"
-                    class="version-tag"
-                  >
+                  <n-tag :bordered="false" size="small" type="primary" class="version-tag">
                     {{ newVersion?.version || "v0.0.0" }}
                   </n-tag>
                   <n-tag v-if="newVersion?.prerelease" class="test" size="small" type="warning">

@@ -189,6 +189,33 @@ export const useAppearanceSettings = (): SettingConfig => {
               set: (v) => (settingStore.routeAnimation = v),
             }),
           },
+          {
+            key: "pageZoom",
+            label: "页面缩放",
+            type: "slider",
+            show: computed(() => statusStore.isDeveloperMode),
+            description:
+              "整体界面缩放比例。缩小后等效视口变宽，达到阈值会切换到 Pad 布局（底栏变侧栏，列表显示更多列）",
+            min: 50,
+            max: 150,
+            step: 5,
+            marks: { 100: "默认" },
+            formatTooltip: (v) => `${v}%`,
+            value: computed({
+              get: () => settingStore.pageZoom,
+              set: (v) => (settingStore.pageZoom = v),
+            }),
+            extraButton: {
+              label: "重置",
+              type: "primary",
+              secondary: true,
+              strong: true,
+              action: () => {
+                settingStore.pageZoom = 100;
+              },
+              show: computed(() => settingStore.pageZoom !== 100),
+            },
+          },
         ],
       },
       {

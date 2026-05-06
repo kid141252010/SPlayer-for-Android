@@ -218,6 +218,7 @@ onMounted(getAllCloudMusic);
       font-weight: bold;
       margin-right: 12px;
       line-height: normal;
+      white-space: nowrap;
     }
     .status {
       font-size: 15px;
@@ -282,6 +283,62 @@ onMounted(getAllCloudMusic);
     flex: 1;
     overflow: hidden;
     max-height: calc((var(--layout-height) - 132) * 1px);
+  }
+
+  // 手机端：标题竖排、菜单允许多行不再撑出固定 40px 压到列表头
+  @media (max-width: 768px) {
+    .title {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+      height: auto;
+      margin-top: 8px;
+      margin-bottom: 14px;
+      .keyword {
+        font-size: 24px;
+        margin-right: 0;
+      }
+      .status {
+        font-size: 13px;
+        line-height: 22px;
+        .n-progress {
+          :deep(.n-progress-graph) {
+            width: 96px;
+          }
+          .space {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+      }
+    }
+    .menu {
+      height: auto;
+      margin-bottom: 12px;
+      row-gap: 10px;
+      .search {
+        flex: 1;
+        min-width: 0;
+        width: auto;
+        &.n-input--focus {
+          width: auto;
+        }
+      }
+    }
+  }
+
+  @media (max-width: 512px) {
+    .title {
+      .status {
+        font-size: 12px;
+      }
+    }
+    .menu {
+      .search {
+        width: 100%;
+        flex: none;
+      }
+    }
   }
 }
 </style>

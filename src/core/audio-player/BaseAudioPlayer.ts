@@ -205,7 +205,7 @@ export abstract class BaseAudioPlayer
 
     // 恢复播放位置
     if (options.seek && options.seek > 0) {
-      this.doSeek(options.seek);
+      await this.doSeek(options.seek);
     }
 
     if (!shouldPlay) return;

@@ -35,9 +35,9 @@
         <div class="power">
           <n-text class="author" :depth="2" @click="toGithub">
             <SvgIcon name="Github" :size="20" />
-            {{ packageJson.author }}
+            SPlayer-dev
           </n-text>
-          <n-text class="name">SPlayer</n-text>
+          <n-text class="name">SPlayer for Android</n-text>
           <n-tag v-if="isNightly" class="version" size="small" type="primary" round>
             Nightly · {{ displayVersion }}
           </n-tag>
@@ -322,7 +322,6 @@ const menuOptions: MenuOption[] = [
   {
     key: "local",
     label: "本地与缓存",
-    show: isElectron,
     icon: renderIcon("Storage"),
   },
   {
@@ -460,7 +459,7 @@ onMounted(() => {
 <style lang="scss">
 .main-setting {
   position: relative;
-  width: calc(100vw - 40px);
+  width: calc(100% - 40px);
   max-width: 1024px !important;
   overflow: hidden;
   .n-card-header {
@@ -536,17 +535,31 @@ onMounted(() => {
     }
     @media (max-width: 768px) {
       .set-content {
-        padding: 0 16px;
+        padding: 0 12px;
         .n-scrollbar-content {
-          padding: 12px 0 !important;
+          padding: 8px 0 !important;
         }
       }
+      .set-list {
+        padding-top: 22px;
+      }
+      .n-collapse-transition {
+        margin-bottom: 8px;
+      }
       .set-item {
-        .set {
-          @media (max-width: 768px) {
-            width: 140px;
-            min-width: 140px;
+        margin-bottom: 8px;
+        .n-card__content {
+          padding: 12px 14px;
+        }
+        .label {
+          padding-right: 14px;
+          .name {
+            font-size: 14px;
           }
+        }
+        .set {
+          width: 140px;
+          min-width: 140px;
         }
       }
     }

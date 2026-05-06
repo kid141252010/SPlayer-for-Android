@@ -5,26 +5,55 @@
     </n-text>
     <n-scrollbar style="max-height: 50vh">
       <n-list class="local-list" hoverable clickable bordered>
-        <div v-if="!settingStore.localFilesPath.length" class="empty">
+        <div v-if="!hasAnyDirectory" class="empty">
           <n-empty description="暂无目录" />
         </div>
-        <n-list-item v-for="(path, index) in settingStore.localFilesPath" :key="index">
-          <template #prefix>
-            <SvgIcon :size="20" name="Folder" />
-          </template>
-          <template #suffix>
-            <n-button :focusable="false" quaternary @click="changeLocalMusicPath(index)">
-              <template #icon>
-                <SvgIcon :size="20" name="Delete" />
-              </template>
-            </n-button>
-          </template>
-          <n-thing :title="path" />
-        </n-list-item>
+        <!-- Electron 端：显示文件系统路径 -->
+        <template v-if="!isCapacitorAndroid">
+          <n-list-item v-for="(path, index) in settingStore.localFilesPath" :key="index">
+            <template #prefix>
+              <SvgIcon :size="20" name="Folder" />
+            </template>
+            <template #suffix>
+              <n-button :focusable="false" quaternary @click="changeLocalMusicPath(index)">
+                <template #icon>
+                  <SvgIcon :size="20" name="Delete" />
+                </template>
+              </n-button>
+            </template>
+            <n-thing :title="path" />
+          </n-list-item>
+        </template>
+        <!-- Android 端：显示 SAF 目录 -->
+        <template v-else>
+          <n-list-item
+            v-for="(item, index) in settingStore.androidLocalMusicDirectories"
+            :key="item.uri"
+          >
+            <template #prefix>
+              <SvgIcon :size="20" name="Folder" />
+            </template>
+            <template #suffix>
+              <n-button :focusable="false" quaternary @click="removeAndroidDirectory(index)">
+                <template #icon>
+                  <SvgIcon :size="20" name="Delete" />
+                </template>
+              </n-button>
+            </template>
+            <n-thing :title="item.name || '未命名目录'" :description="item.uri" />
+          </n-list-item>
+        </template>
       </n-list>
     </n-scrollbar>
     <n-flex justify="center" style="margin-top: 20px">
-      <n-button class="add-path" strong secondary @click="changeLocalMusicPath()">
+      <n-button
+        class="add-path"
+        strong
+        secondary
+        :loading="adding"
+        :disabled="adding"
+        @click="handleAddDirectory"
+      >
         <template #icon>
           <SvgIcon name="FolderPlus" />
         </template>
@@ -38,8 +67,56 @@
 import { useSettingStore } from "@/stores";
 import { changeLocalMusicPath } from "@/utils/helper";
 import SvgIcon from "@/components/Global/SvgIcon.vue";
+import { isCapacitorAndroid } from "@/utils/env";
+import { AndroidDownload } from "@/plugins/androidDownload";
+import { useEventBus } from "@vueuse/core";
 
 const settingStore = useSettingStore();
+const adding = ref(false);
+const localEventBus = useEventBus("local");
+
+// 是否存在已配置目录（兼容两端）
+const hasAnyDirectory = computed(() => {
+  if (isCapacitorAndroid) return settingStore.androidLocalMusicDirectories.length > 0;
+  return settingStore.localFilesPath.length > 0;
+});
+
+const handleAddDirectory = async () => {
+  if (!isCapacitorAndroid) {
+    await changeLocalMusicPath();
+    return;
+  }
+  // Android: 走 SAF 目录选择器
+  adding.value = true;
+  try {
+    const result = await AndroidDownload.pickLocalMusicDirectory();
+    if (result.cancelled || !result.uri) return;
+    // 去重
+    const exists = settingStore.androidLocalMusicDirectories.some((i) => i.uri === result.uri);
+    if (exists) {
+      window.$message.warning("该目录已存在");
+      return;
+    }
+    settingStore.androidLocalMusicDirectories.push({
+      uri: result.uri,
+      name: result.name || "未命名目录",
+    });
+    window.$message.success("已添加目录，正在扫描...");
+    // 通知 Local 布局重扫
+    localEventBus.emit();
+  } catch (error) {
+    console.error("选择本地音乐目录失败:", error);
+    window.$message.error("选择本地音乐目录失败");
+  } finally {
+    adding.value = false;
+  }
+};
+
+const removeAndroidDirectory = (index: number) => {
+  settingStore.androidLocalMusicDirectories.splice(index, 1);
+  // 通知 Local 布局重扫
+  localEventBus.emit();
+};
 </script>
 
 <style scoped lang="scss">
@@ -58,6 +135,7 @@ const settingStore = useSettingStore();
     .n-thing-main__description {
       font-size: 13px;
       opacity: 0.6;
+      word-break: break-all;
     }
   }
   .empty {

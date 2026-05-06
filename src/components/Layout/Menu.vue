@@ -181,7 +181,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
               },
               () => "下载管理",
             ),
-          show: statusStore.isDeveloperMode && isElectron && !settingStore.sidebarHide.hideDownload,
+          show: statusStore.isDeveloperMode && !settingStore.sidebarHide.hideDownload,
           icon: renderIcon("Download"),
         },
         {
@@ -195,7 +195,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           key: "local",
           link: "local",
           label: "本地歌曲",
-          show: isElectron && !settingStore.sidebarHide.hideLocal,
+          show: !settingStore.sidebarHide.hideLocal,
           icon: renderIcon("FolderMusic"),
         },
         {
@@ -277,25 +277,20 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           key: "local",
           link: "local",
           label: "音乐库",
-          show: isElectron,
           icon: renderIcon("FolderMusic"),
         },
         {
           key: "local-albums",
           link: "local-albums",
           label: "专辑",
-          show:
-            isElectron &&
-            (localStore.localSongs?.length > 0 || settingStore.localFilesPath?.length > 0),
+          show: localStore.localSongs?.length > 0 || settingStore.localFilesPath?.length > 0,
           icon: renderIcon("Album"),
         },
         {
           key: "local-artists",
           link: "local-artists",
           label: "艺术家",
-          show:
-            isElectron &&
-            (localStore.localSongs?.length > 0 || settingStore.localFilesPath?.length > 0),
+          show: localStore.localSongs?.length > 0 || settingStore.localFilesPath?.length > 0,
           icon: renderIcon("Person"),
         },
         {

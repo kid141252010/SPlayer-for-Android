@@ -7,7 +7,21 @@ import type { SongType, CoverSize } from "./main";
 /**
  * 流媒体服务器类型
  */
-export type StreamingServerType = "navidrome" | "jellyfin" | "subsonic" | "opensubsonic" | "emby";
+export type StreamingServerType =
+  | "navidrome"
+  | "jellyfin"
+  | "subsonic"
+  | "opensubsonic"
+  | "emby"
+  | "webdav";
+
+/**
+ * WebDAV 认证方式
+ * - basic：HTTP Basic Auth（推荐，最广泛支持）
+ * - digest：HTTP Digest Auth（少数服务器需要；当前实现仅占位，浏览器 fetch 不原生支持）
+ * - anonymous：匿名访问
+ */
+export type WebDavAuthType = "basic" | "digest" | "anonymous";
 
 /**
  * 流媒体服务器配置
@@ -29,6 +43,10 @@ export interface StreamingServerConfig {
   accessToken?: string;
   /** Jellyfin 专用: 用户 ID */
   userId?: string;
+  /** WebDAV 专用：库根目录（相对 url，默认 "/"） */
+  libraryRoot?: string;
+  /** WebDAV 专用：认证方式 */
+  webdavAuth?: WebDavAuthType;
   /** 最后连接时间 */
   lastConnected?: number;
   /** 是否为当前激活的服务器 */

@@ -4,12 +4,12 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.graphics.Canvas;
-import android.graphics.Color;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.net.Uri;
@@ -253,6 +253,7 @@ public final class PlaybackManager {
   }
 
   public synchronized JSObject load(String url, long positionMs, boolean autoPlay) {
+    Log.d(TAG, "load: url=" + url + " positionMs=" + positionMs + " autoPlay=" + autoPlay);
     ensureInitialized();
     ensureServiceRunning();
 
@@ -263,16 +264,15 @@ public final class PlaybackManager {
     clearPendingSeek();
     lastKnownPositionMs = 0L;
 
-    if (positionMs > 0) {
-      // 在 prepare 之前设置起始位置，ExoPlayer 会在准备阶段
-      // 通过 HTTP Range 请求正确位置的数据，而非先准备再 seekTo
-      player.setMediaItem(buildMediaItem(currentSource), positionMs);
-      beginPendingSeek(positionMs);
-    } else {
-      player.setMediaItem(buildMediaItem(currentSource));
-    }
+    // 参考 SPlayer-ROM-Compat：先 setMediaItem + prepare，再 seekTo，最后 playWhenReady
+    // 不用 setMediaItem(item, startPositionMs) ——某些 ROM/容器格式下 startPositionMs
+    // 在 IDLE→prepare 转换中可能被丢弃，导致实际从 0 开始播放（UI 显示 seek 位置但音频从头放）
+    player.setMediaItem(buildMediaItem(currentSource));
     player.prepare();
-
+    if (positionMs > 0) {
+      player.seekTo(positionMs);
+      beginPendingSeek(positionMs);
+    }
     player.setPlayWhenReady(autoPlay);
     updateNotification();
     emitPlaybackState(true);
@@ -397,7 +397,6 @@ public final class PlaybackManager {
    * false：由 ExoPlayer 独占音频焦点，开始播放会暂停其他应用。
    */
   public synchronized void setAllowMixWithOthers(boolean allow) {
-    if (allowMixWithOthers == allow) return;
     allowMixWithOthers = allow;
     if (player != null) {
       player.setAudioAttributes(
@@ -732,10 +731,13 @@ public final class PlaybackManager {
     loadCoverBitmapAsync(currentMetadata.coverUrl);
     updateMediaSessionButtons();
     updateNotification();
+    // 注意：先 emitPlaybackState 再 emitProgressChanged。
+    // gapless 切歌时 TS 引擎要先从 playbackStateChanged.src 检测到换轨并重置内部 _currentTime/lastTimeSyncAt，
+    // 否则 progressChanged 触发的 timeupdate 会用旧基准估算出错误位置（进度条直接跳到末尾）。
+    emitPlaybackState(true);
     if (emitProgressImmediately) {
       emitProgressChanged();
     }
-    emitPlaybackState(true);
   }
 
   private SessionCommands buildAvailableSessionCommands() {
@@ -1392,10 +1394,9 @@ public final class PlaybackManager {
         clearPendingSeek();
       } else if (playerPositionMs + 250L < pendingSeekPositionMs) {
         return Math.max(0L, lastKnownPositionMs);
-      } else if (Math.abs(playerPositionMs - pendingSeekPositionMs) <= SEEK_POSITION_TOLERANCE_MS
-          || playerPositionMs >= pendingSeekPositionMs - 250L) {
-        clearPendingSeek();
       }
+      // 位置已到达 seek 目标，更新 lastKnownPositionMs 但不清除 pendingSeek
+      // 只让 deadline 自然过期，防止后续异步回调携带旧位置覆盖
     }
 
     lastKnownPositionMs = playerPositionMs;
@@ -1415,15 +1416,17 @@ public final class PlaybackManager {
 
   private void rememberReportedPosition(long positionMs) {
     long safePositionMs = Math.max(0L, positionMs);
-    lastKnownPositionMs = safePositionMs;
-    if (pendingSeekPositionMs == C.TIME_UNSET) {
-      return;
+
+    if (pendingSeekPositionMs != C.TIME_UNSET) {
+      long now = System.currentTimeMillis();
+      if (now > pendingSeekDeadlineMs) {
+        clearPendingSeek();
+      } else if (safePositionMs + 250L < pendingSeekPositionMs) {
+        return;
+      }
     }
 
-    if (Math.abs(safePositionMs - pendingSeekPositionMs) <= SEEK_POSITION_TOLERANCE_MS
-        || safePositionMs >= pendingSeekPositionMs - 250L) {
-      clearPendingSeek();
-    }
+    lastKnownPositionMs = safePositionMs;
   }
 
   private String formatTime(long timeMs) {

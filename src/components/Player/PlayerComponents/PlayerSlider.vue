@@ -4,7 +4,7 @@
     :key="musicStore.playSong?.id"
     :step="0.01"
     :min="0"
-    :max="statusStore.duration"
+    :max="sliderMax"
     :keyboard="false"
     :format-tooltip="formatTooltip"
     :tooltip="settingStore.progressTooltipShow && showTooltip"
@@ -28,6 +28,14 @@ const settingStore = useSettingStore();
 
 const player = usePlayerController();
 const throttledSetSeek = useThrottleFn((value: number) => setSeek(value), 30);
+
+// slider max：duration 还没到时用歌曲元数据 duration 兜底，避免 max=0 把所有拖动钳到 0
+const sliderMax = computed(() => {
+  const stateDuration = statusStore.duration;
+  if (stateDuration > 0) return stateDuration;
+  const songDuration = musicStore.playSong?.duration;
+  return typeof songDuration === "number" && songDuration > 0 ? songDuration : 1;
+});
 
 // 拖动时的临时值
 const dragValue = ref(0);

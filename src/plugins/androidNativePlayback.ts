@@ -137,6 +137,7 @@ export interface AndroidNativePlaybackPlugin {
   updateQueueContext(options: AndroidNativeQueueContextPayload): Promise<void>;
   updateNotificationPrefs(options: AndroidNativeNotificationPrefsPayload): Promise<void>;
   setAllowMixWithOthers(options: { allow: boolean }): Promise<void>;
+  setShowStatusBar(options: { show: boolean }): Promise<void>;
   syncApiContext(options: AndroidNativeApiContextPayload): Promise<void>;
   syncRemoteState(options: {
     playing: boolean;

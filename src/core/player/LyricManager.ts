@@ -401,6 +401,79 @@ class LyricManager {
 
     try {
       const settingStore = useSettingStore();
+
+      // Android 端：使用 Capacitor 插件查找同目录歌词文件
+      if (isCapacitorAndroid) {
+        try {
+          const result = await AndroidLocalLyric.findSidecarLyric({ audioPath: song.path });
+          if (result?.content) {
+            const format = result.format || "lrc";
+            if (format === "ttml") {
+              const cleaned = cleanTTMLTranslations(result.content);
+              const ttmlLines = parseTTML(cleaned).lines || [];
+              if (ttmlLines.length) {
+                return {
+                  data: { lrcData: [], yrcData: ttmlLines },
+                  meta: { usingTTMLLyric: true, usingQRCLyric: false },
+                };
+              }
+            }
+            if (format === "yrc") {
+              let yrcLines: LyricLine[] = [];
+              if (result.content.trim().startsWith("<") || result.content.includes("<QrcInfos>")) {
+                yrcLines = parseQRCLyric(result.content);
+              } else {
+                yrcLines = parseYrc(result.content) || [];
+              }
+              if (yrcLines.length) {
+                return {
+                  data: { lrcData: [], yrcData: yrcLines },
+                  meta: { usingTTMLLyric: false, usingQRCLyric: false },
+                };
+              }
+            }
+            // LRC 及其他格式
+            const { format: lrcFormat, lines } = parseSmartLrc(result.content);
+            if (lines.length) {
+              if (isWordLevelFormat(lrcFormat)) {
+                return {
+                  data: { lrcData: [], yrcData: lines },
+                  meta: { usingTTMLLyric: false, usingQRCLyric: false },
+                };
+              }
+              let aligned: SongLyric = { lrcData: alignLyricLines(lines), yrcData: [] };
+              let usingQRCLyric = false;
+              if (settingStore.localLyricQQMusicMatch && song) {
+                const qqLyric = await this.fetchQQMusicLyric(song);
+                if (qqLyric && qqLyric.yrcData.length > 0) {
+                  aligned = { lrcData: aligned.lrcData, yrcData: qqLyric.yrcData };
+                  usingQRCLyric = true;
+                }
+              }
+              return {
+                data: aligned,
+                meta: { usingTTMLLyric: false, usingQRCLyric },
+              };
+            }
+          }
+        } catch {
+          // sidecar 查找失败，继续后续流程
+        }
+
+        // 无本地歌词，尝试在线 QQ 匹配
+        if (settingStore.localLyricQQMusicMatch && song) {
+          const qqLyric = await this.fetchQQMusicLyric(song);
+          if (qqLyric && (qqLyric.lrcData.length > 0 || qqLyric.yrcData.length > 0)) {
+            return {
+              data: qqLyric,
+              meta: { usingTTMLLyric: false, usingQRCLyric: qqLyric.yrcData.length > 0 },
+            };
+          }
+        }
+        return defaultResult;
+      }
+
+      // Electron 端：使用原有 IPC 逻辑
       const { lyric, format }: { lyric?: string; format?: "lrc" | "ttml" | "yrc" } =
         await window.electron.ipcRenderer.invoke("get-music-lyric", song.path);
       if (!lyric) return defaultResult;
@@ -474,10 +547,15 @@ class LyricManager {
       meta: { usingTTMLLyric: false, usingQRCLyric: false }, // 覆盖默认没有 QRC
     };
 
-    if (!isElectron || !localLyricPath.length) return defaultResult;
+    if (!isElectron && !isCapacitorAndroid) return defaultResult;
+    if (isElectron && !localLyricPath.length) return defaultResult;
+    if (isCapacitorAndroid && !settingStore.androidLyricDirectories.length) return defaultResult;
 
     // 从本地遍历
     try {
+      // Android 端：直接走索引歌词（fetchAndroidIndexedLyric），本地覆盖已在索引流程中处理
+      if (isCapacitorAndroid) return defaultResult;
+
       const lyricDirs = Array.isArray(localLyricPath) ? localLyricPath.map((p) => String(p)) : [];
       // 读取本地歌词
       const { lrc, ttml } = await window.electron.ipcRenderer.invoke(
@@ -554,13 +632,30 @@ class LyricManager {
       const { content } = await AndroidLocalLyric.readLyricFile({ uri: entry.uri });
       if (!content) return defaultResult;
 
-      const cleaned = cleanTTMLTranslations(content);
-      const lines = parseTTML(cleaned).lines || [];
-      if (!lines.length) return defaultResult;
+      const format = entry.format || "ttml";
 
+      if (format === "ttml") {
+        const cleaned = cleanTTMLTranslations(content);
+        const lines = parseTTML(cleaned).lines || [];
+        if (!lines.length) return defaultResult;
+        return {
+          data: { lrcData: [], yrcData: lines },
+          meta: { usingTTMLLyric: true, usingQRCLyric: false },
+        };
+      }
+
+      // LRC 格式
+      const { format: lrcFormat, lines } = parseSmartLrc(content);
+      if (!lines.length) return defaultResult;
+      if (isWordLevelFormat(lrcFormat)) {
+        return {
+          data: { lrcData: [], yrcData: lines },
+          meta: { usingTTMLLyric: false, usingQRCLyric: false },
+        };
+      }
       return {
-        data: { lrcData: [], yrcData: lines },
-        meta: { usingTTMLLyric: true, usingQRCLyric: false },
+        data: { lrcData: alignLyricLines(lines), yrcData: [] },
+        meta: { usingTTMLLyric: false, usingQRCLyric: false },
       };
     } catch (error) {
       console.error("读取 Android 本地歌词失败:", error);
